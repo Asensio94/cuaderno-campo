@@ -58,7 +58,8 @@ def test_el_corpus_comprometido_coincide_con_su_generador() -> None:
     """Misma prueba de oro que en I0: si el guion cambia y nadie regenera, el corpus deja de
     describir lo que dice describir, y el lado TypeScript compara contra un fósil."""
     for nombre, contenido in generar_corpus.artefactos().items():
-        actual = (CONFORMIDAD / nombre).read_text(encoding="utf-8")
+        ruta = CONFORMIDAD / nombre
+        actual = ruta.read_bytes() if isinstance(contenido, bytes) else ruta.read_text(encoding="utf-8")
         assert actual == contenido, f"{nombre} está desfasado: regenera el corpus"
 
 

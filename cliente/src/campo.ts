@@ -108,6 +108,19 @@ export async function declararCuaderno(nombre: string, observador: string): Prom
   return cuaderno;
 }
 
+/** Hace de este aparato un dispositivo de un cuaderno que ya existe en el registro: es lo que
+ * pasa al restaurar una copia en un teléfono vacío. No emite nada —el `cuaderno.declarado` ya
+ * está en los sucesos restaurados— y el identificador de dispositivo es **nuevo**, aunque la copia
+ * venga del mismo teléfono reinstalado: reutilizar el antiguo con un registro que quizá no está
+ * completo produciría dos sucesos distintos con el mismo `(dispositivo, seq)`, y eso no se
+ * arregla. Un dispositivo nuevo siempre es seguro (§4.6). */
+export function adoptarCuaderno(cuaderno: string, observador: string): string {
+  const dispositivo = apodar(observador);
+  localStorage.setItem(CLAVE_CUADERNO, cuaderno);
+  localStorage.setItem(CLAVE_DISPOSITIVO, dispositivo);
+  return dispositivo;
+}
+
 export async function iniciarSalida(datos: {
   localidad?: string;
   protocolo?: string;

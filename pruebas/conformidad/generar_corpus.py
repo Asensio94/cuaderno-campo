@@ -29,9 +29,11 @@ El corpus ejercita a propósito:
 
 from __future__ import annotations
 
+import io
 import json
 import random
 import struct
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -345,7 +347,26 @@ def numeros() -> list[str]:
     return [numero_canonico(x) for x in casos]
 
 
-def artefactos() -> dict[str, str]:
+def copia(sucesos: list[Suceso]) -> bytes:
+    """La copia de seguridad del corpus (nucleo/registro/copia.py), escrita por Python para que
+    la lea la prueba de TypeScript. Los medios son de mentira —el corpus referencia hashes de
+    ficheros que nunca existieron—, así que su contenido no da su nombre; lo que se prueba aquí
+    es el formato, no la integridad, que se prueba con medios de verdad en test_copia.py."""
+    from nucleo.registro.copia import escribir_copia
+
+    buf = io.BytesIO()
+    escribir_copia(
+        buf,
+        sucesos,
+        cuaderno_id=sucesos[0].cuaderno_id,
+        dispositivo_id=sucesos[0].dispositivo_id,
+        medio=lambda h: f"medio de mentira {h[:8]}".encode(),
+        ahora=datetime(2025, 8, 24, 6, 0, tzinfo=timezone.utc),
+    )
+    return buf.getvalue()
+
+
+def artefactos() -> dict[str, str | bytes]:
     g = construir()
     corpus = "".join(
         json.dumps(s.a_json(), ensure_ascii=False, sort_keys=True) + "\n" for s in g.sucesos
@@ -361,6 +382,7 @@ def artefactos() -> dict[str, str]:
             limpia, ensure_ascii=False, sort_keys=True, indent=2
         )
         + "\n",
+        "copia.zip": copia(g.sucesos),
     }
 
 
@@ -368,10 +390,16 @@ def main() -> int:
     RAIZ.mkdir(parents=True, exist_ok=True)
     for nombre, contenido in artefactos().items():
         ruta = RAIZ / nombre
-        anterior = ruta.read_text(encoding="utf-8") if ruta.exists() else None
-        estado = "sin cambios" if anterior == contenido else "escrito"
-        if anterior != contenido:
-            ruta.write_text(contenido, encoding="utf-8", newline="\n")
+        if isinstance(contenido, bytes):
+            anterior_b = ruta.read_bytes() if ruta.exists() else None
+            estado = "sin cambios" if anterior_b == contenido else "escrito"
+            if anterior_b != contenido:
+                ruta.write_bytes(contenido)
+        else:
+            anterior = ruta.read_text(encoding="utf-8") if ruta.exists() else None
+            estado = "sin cambios" if anterior == contenido else "escrito"
+            if anterior != contenido:
+                ruta.write_text(contenido, encoding="utf-8", newline="\n")
         print(f"{estado:12} {nombre}")
     return 0
 

@@ -1009,3 +1009,39 @@ pre {
 .hipotesis .secundario.compacto {
   align-self: flex-start;
 }
+
+/* --- Copia de seguridad --------------------------------------------------------------- */
+.aviso.bien {
+  background: var(--bien-fondo, #e6f4ea);
+  color: var(--bien, #1e6b3a);
+}
+.copia .botones {
+  margin-top: 0.6rem;
+}
+.copia .botones .secundario {
+  flex: 1;
+}
+.copia .aviso {
+  margin-top: 0.8rem;
+}
+.copia p.tenue {
+  margin: 0.2rem 0 0;
+  font-size: 0.9rem;
+}
+.enlace {
+  display: inline;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--verde-tinta);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  box-shadow: none;
+}
+.alta .restaurar {
+  margin: -0.4rem 0 1.2rem;
+  font-size: 0.95rem;
+  color: var(--tenue);
+}

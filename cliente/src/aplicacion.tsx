@@ -29,6 +29,8 @@ import {
   retractarOcurrencia,
 } from './campo.ts';
 import type { EstadoCampo, Identificacion, Nota, Observacion, Sensibilidad } from './campo.ts';
+import { exportarCopia, importarCopia } from './copia.ts';
+import type { Restaurada } from './copia.ts';
 import { edadSegundos, useGps } from './gps.ts';
 import type { EstadoGps } from './gps.ts';
 import { useInstalacion } from './instalar.ts';
@@ -572,12 +574,151 @@ function Hipotesis({
   );
 }
 
-function Aviso({ tono, children }: { tono: 'mal' | 'flojo'; children: React.ReactNode }) {
+function Aviso({
+  tono,
+  children,
+}: {
+  tono: 'mal' | 'flojo' | 'bien';
+  children: React.ReactNode;
+}) {
   return (
     <div className={`aviso ${tono}`}>
-      <Icono n="aviso" tam={20} />
+      <Icono n={tono === 'bien' ? 'ok' : 'aviso'} tam={20} />
       <div>{children}</div>
     </div>
+  );
+}
+
+// --- Copia de seguridad -----------------------------------------------------------------
+
+const tamano = (bytes: number) =>
+  bytes < 1_000_000
+    ? `${Math.max(1, Math.round(bytes / 1000))} KB`
+    : `${(bytes / 1_000_000).toFixed(bytes < 10_000_000 ? 1 : 0)} MB`;
+
+function describirRestauracion(r: Restaurada): string {
+  const partes = [
+    `${plural(r.sucesosNuevos, 'suceso nuevo', 'sucesos nuevos')}` +
+      (r.sucesosRepetidos ? ` (${r.sucesosRepetidos} ya estaban)` : ''),
+  ];
+  if (r.mediosGuardados || r.mediosYaEstaban) {
+    partes.push(
+      `${plural(r.mediosGuardados, 'medio guardado', 'medios guardados')}` +
+        (r.mediosYaEstaban ? ` (${r.mediosYaEstaban} ya estaban)` : ''),
+    );
+  }
+  if (r.mediosCorruptos) {
+    partes.push(`${plural(r.mediosCorruptos, 'medio dañado', 'medios dañados')} sin guardar`);
+  }
+  const cuaderno = {
+    este: '',
+    adoptado: ' Este aparato es ahora un dispositivo de ese cuaderno.',
+    otro: ' Son de otro cuaderno: quedan en el registro pero no se muestran.',
+    varios: ' La copia traía varios cuadernos.',
+    ninguno: '',
+  }[r.cuaderno];
+  return `Restaurados ${partes.join(', ')}.${cuaderno}`;
+}
+
+/** El botón de restaurar con su selector de fichero escondido. Sirve en el alta —un teléfono
+ * nuevo o reinstalado— y en el inicio. */
+function Restaurador({
+  className,
+  hecho,
+  fallo,
+  children,
+}: {
+  className: string;
+  hecho: (r: Restaurada) => void;
+  fallo: (mensaje: string) => void;
+  children: React.ReactNode;
+}) {
+  const entrada = useRef<HTMLInputElement>(null);
+  const [ocupado, setOcupado] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        className={className}
+        disabled={ocupado}
+        onClick={() => entrada.current?.click()}
+      >
+        {children}
+      </button>
+      <input
+        ref={entrada}
+        type="file"
+        accept=".zip,.jsonl,application/zip,application/x-ndjson"
+        hidden
+        onChange={(e) => {
+          const fichero = e.target.files?.[0];
+          e.target.value = '';
+          if (!fichero) return;
+          setOcupado(true);
+          importarCopia(fichero)
+            .then(hecho, (error: unknown) =>
+              fallo(error instanceof Error ? error.message : String(error)),
+            )
+            .finally(() => setOcupado(false));
+        }}
+      />
+    </>
+  );
+}
+
+function CopiaSeguridad({ nombre, recargar }: { nombre: string; recargar: () => void }) {
+  const [ocupado, setOcupado] = useState(false);
+  const [mensaje, setMensaje] = useState<{ tono: 'bien' | 'mal' | 'flojo'; texto: string } | null>(
+    null,
+  );
+
+  const guardar = () => {
+    setOcupado(true);
+    setMensaje(null);
+    exportarCopia(nombre)
+      .then((r) => {
+        if (r.destino === 'cancelada') return;
+        const faltan = r.faltantes ? ` Faltaban ${r.faltantes} medios en este aparato.` : '';
+        setMensaje({
+          tono: r.faltantes ? 'flojo' : 'bien',
+          texto:
+            `${r.nombre} · ${tamano(r.bytes)} · ${plural(r.sucesos, 'suceso', 'sucesos')} y ` +
+            `${plural(r.medios, 'medio', 'medios')}` +
+            (r.destino === 'descargada' ? ', en Descargas.' : '.') +
+            faltan,
+        });
+      })
+      .catch((error: unknown) =>
+        setMensaje({ tono: 'mal', texto: error instanceof Error ? error.message : String(error) }),
+      )
+      .finally(() => setOcupado(false));
+  };
+
+  return (
+    <section className="lista copia">
+      <h2>Copia de seguridad</h2>
+      <p className="tenue">
+        El registro entero con sus fotos y sonidos, en un ZIP. Compártelo a Drive o guárdalo donde
+        quieras. Restaurar no borra nada: añade lo que falte.
+      </p>
+      <div className="botones">
+        <button type="button" className="secundario" disabled={ocupado} onClick={guardar}>
+          <Icono n="descargar" tam={18} />
+          {ocupado ? 'Empaquetando…' : 'Guardar copia'}
+        </button>
+        <Restaurador
+          className="secundario"
+          hecho={(r) => {
+            setMensaje({ tono: r.mediosCorruptos ? 'flojo' : 'bien', texto: describirRestauracion(r) });
+            recargar();
+          }}
+          fallo={(texto) => setMensaje({ tono: 'mal', texto })}
+        >
+          Restaurar…
+        </Restaurador>
+      </div>
+      {mensaje && <Aviso tono={mensaje.tono}>{mensaje.texto}</Aviso>}
+    </section>
   );
 }
 
@@ -669,6 +810,9 @@ function Alta({ hecho }: { hecho: () => void }) {
   const [nombre, setNombre] = useState('');
   const [observador, setObservador] = useState('');
   const [guardando, setGuardando] = useState(false);
+  const [restauracion, setRestauracion] = useState<{ tono: 'mal' | 'flojo'; texto: string } | null>(
+    null,
+  );
 
   return (
     <form
@@ -682,6 +826,28 @@ function Alta({ hecho }: { hecho: () => void }) {
       <Curvas />
       <h1>Cuaderno de campo</h1>
       <p className="lema">Observaciones con posición, foto y hora. Sin cobertura.</p>
+
+      <p className="restaurar">
+        ¿Ya tenías un cuaderno?{' '}
+        <Restaurador
+          className="enlace"
+          hecho={(r) => {
+            if (r.cuaderno === 'adoptado') hecho();
+            else
+              setRestauracion({
+                tono: 'flojo',
+                texto:
+                  r.cuaderno === 'varios'
+                    ? 'La copia trae varios cuadernos y este aparato solo puede ser de uno. Abre uno nuevo o restaura una copia de un solo cuaderno.'
+                    : 'La copia no trae ningún cuaderno declarado.',
+              });
+          }}
+          fallo={(texto) => setRestauracion({ tono: 'mal', texto })}
+        >
+          Restaurar una copia
+        </Restaurador>
+      </p>
+      {restauracion && <Aviso tono={restauracion.tono}>{restauracion.texto}</Aviso>}
 
       <label>
         <span>Nombre del cuaderno</span>
@@ -720,11 +886,13 @@ function Inicio({
   instalacion,
   abrir,
   ver,
+  recargar,
 }: {
   campo: EstadoCampo;
   instalacion: Instalacion;
   abrir: () => void;
   ver: (id: string) => void;
+  recargar: () => void;
 }) {
   const [localidad, setLocalidad] = useState('');
   const [empezando, setEmpezando] = useState(false);
@@ -814,6 +982,8 @@ function Inicio({
           </ul>
         )}
       </section>
+
+      <CopiaSeguridad nombre={cuaderno.nombre} recargar={recargar} />
 
       <p className="pie">
         <a href="#/conformidad">Diagnóstico del almacén</a>
@@ -1483,6 +1653,7 @@ export function Aplicacion() {
             setViendo(id);
             setPantalla({ tipo: 'salida' });
           }}
+          recargar={recargar}
         />
       </>
     );
