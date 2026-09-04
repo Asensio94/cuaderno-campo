@@ -162,6 +162,7 @@ campos = [
   { termino = "dwc:identificationID", tipo = "texto", clave = true },
   { termino = "cdc:cuadernoID", tipo = "texto", requerido = true, indice = true, exportar = false },
   { termino = "dwc:occurrenceID", tipo = "texto", requerido = true, indice = true },
+  { termino = "cdc:medioID", tipo = "texto", indice = true, exportar = false, nota = "el medio del que salió la hipótesis, si la propuso un modelo sobre un audio o una foto; así se sabe qué queda por analizar" },
   { termino = "dwc:verbatimIdentification", tipo = "texto", requerido = true, nota = "etiqueta literal del modelo, tal cual" },
   { termino = "dwc:scientificName", tipo = "texto" },
   { termino = "dwc:taxonRank", tipo = "texto" },

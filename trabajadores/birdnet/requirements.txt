@@ -1,0 +1,10 @@
+# Entorno del trabajador de BirdNET (ADR-0001 §10). TensorFlow pesa: va en su propio .venv,
+# nunca en el del núcleo.
+#
+#   python -m venv trabajadores/birdnet/.venv
+#   trabajadores/birdnet/.venv/Scripts/pip install -r trabajadores/birdnet/requirements.txt
+#
+# birdnet-analyzer trae consigo tensorflow, librosa, soundfile y numpy. Los pesos V2.4 vienen
+# dentro del paquete y son CC BY-NC-SA 4.0: uso no comercial.
+birdnet-analyzer==2.4.0
+pytest

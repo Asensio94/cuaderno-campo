@@ -23,7 +23,7 @@ import { readFileSync } from 'node:fs';
 import { describe, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { Almacen, ErrorAlmacen } from './almacen.ts';
+import { Almacen, ErrorAlmacen, VERSION_PROYECCION } from './almacen.ts';
 import type { BaseDatos } from './base-datos.ts';
 import { deJson, sha256Hex } from './suceso.ts';
 import type { Suceso } from './suceso.ts';
@@ -471,6 +471,26 @@ export function pruebasDeAlmacen(motor: string, abrirBd: () => Promise<BaseDatos
       assert.equal(await sha256Hex(guardado.carga), guardado.carga_sha256);
     }
     await almacen.cerrar();
+  });
+
+  test('una proyección de versión anterior se renueva al abrir (§15.15)', async () => {
+    const bd = await abrirBd();
+    const viejo = await Almacen.abrir(bd);
+    await viejo.anadir(CORPUS);
+    const esperada = conFilas(await viejo.proyeccion());
+    // Un almacén de la versión 1: sin la columna que trajo la 2, y marcado como tal.
+    await bd.correr('DROP INDEX "proy_identificacion_medio_id"');
+    await bd.correr('ALTER TABLE "proy_identificacion" DROP COLUMN "medio_id"');
+    await bd.correr('UPDATE proyeccion_meta SET version = 1');
+
+    const nuevo = await Almacen.abrir(bd);
+    const columnas = (await bd.todas('PRAGMA table_info("proy_identificacion")')).map((f) => f.name);
+    assert.ok(columnas.includes('medio_id'));
+    const meta = await bd.una('SELECT version FROM proyeccion_meta');
+    assert.equal(meta?.version, VERSION_PROYECCION);
+    assert.deepStrictEqual(conFilas(await nuevo.proyeccion()), esperada);
+    assert.equal((await nuevo.todos()).length, CORPUS.length - 1);
+    await nuevo.cerrar();
   });
   });
 }

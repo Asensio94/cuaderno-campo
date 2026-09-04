@@ -8,7 +8,7 @@
 
 
 -- Registro de sucesos: la única fuente de verdad.
-CREATE TABLE "suceso" (
+CREATE TABLE IF NOT EXISTS "suceso" (
   "suceso_id"       TEXT NOT NULL PRIMARY KEY,
   "cuaderno_id"     TEXT NOT NULL,
   "dispositivo_id"  TEXT NOT NULL,
@@ -24,19 +24,19 @@ CREATE TABLE "suceso" (
   "anterior_sha256" TEXT,
   UNIQUE ("dispositivo_id", "seq")
 );
-CREATE INDEX "suceso_sujeto"   ON "suceso" ("sujeto_tipo", "sujeto_id", "hlc");
-CREATE INDEX "suceso_hlc"      ON "suceso" ("hlc");
-CREATE INDEX "suceso_cuaderno" ON "suceso" ("cuaderno_id", "seq");
+CREATE INDEX IF NOT EXISTS "suceso_sujeto"   ON "suceso" ("sujeto_tipo", "sujeto_id", "hlc");
+CREATE INDEX IF NOT EXISTS "suceso_hlc"      ON "suceso" ("hlc");
+CREATE INDEX IF NOT EXISTS "suceso_cuaderno" ON "suceso" ("cuaderno_id", "seq");
 
 -- El registro es añadido: ni UPDATE ni DELETE (ADR-0001 §4.1).
-CREATE TRIGGER "suceso_sin_update" BEFORE UPDATE ON "suceso" BEGIN
+CREATE TRIGGER IF NOT EXISTS "suceso_sin_update" BEFORE UPDATE ON "suceso" BEGIN
   SELECT RAISE(ABORT, 'el registro de sucesos es anadido: prohibido UPDATE');
 END;
-CREATE TRIGGER "suceso_sin_delete" BEFORE DELETE ON "suceso" BEGIN
+CREATE TRIGGER IF NOT EXISTS "suceso_sin_delete" BEFORE DELETE ON "suceso" BEGIN
   SELECT RAISE(ABORT, 'el registro de sucesos es anadido: prohibido DELETE');
 END;
 
-CREATE TABLE "proyeccion_meta" (
+CREATE TABLE IF NOT EXISTS "proyeccion_meta" (
   "id"          INTEGER NOT NULL PRIMARY KEY,
   "version"     INTEGER NOT NULL,
   "ultimo_hlc"  TEXT,
@@ -47,7 +47,7 @@ CREATE TABLE "proyeccion_meta" (
 
 -- Cuaderno (interno)
 -- recorded_by: recordedBy por defecto de sus ocurrencias
-CREATE TABLE "proy_cuaderno" (
+CREATE TABLE IF NOT EXISTS "proy_cuaderno" (
   "cuaderno_id" TEXT NOT NULL PRIMARY KEY,
   "nombre" TEXT NOT NULL,
   "recorded_by" TEXT NOT NULL,
@@ -58,7 +58,7 @@ CREATE TABLE "proy_cuaderno" (
 -- Sitio (interno)
 -- decimal_latitude: centroide WGS84
 -- radio_metros: radio que define la pertenencia al sitio
-CREATE TABLE "proy_sitio" (
+CREATE TABLE IF NOT EXISTS "proy_sitio" (
   "location_id" TEXT NOT NULL PRIMARY KEY,
   "cuaderno_id" TEXT NOT NULL,
   "locality" TEXT NOT NULL,
@@ -68,7 +68,7 @@ CREATE TABLE "proy_sitio" (
   "habitat" TEXT,
   "notas" TEXT
 );
-CREATE INDEX "proy_sitio_cuaderno_id" ON "proy_sitio" ("cuaderno_id");
+CREATE INDEX IF NOT EXISTS "proy_sitio_cuaderno_id" ON "proy_sitio" ("cuaderno_id");
 
 -- Salida (interno)
 -- event_date: ISO-8601 con desplazamiento explícito
@@ -76,7 +76,7 @@ CREATE INDEX "proy_sitio_cuaderno_id" ON "proy_sitio" ("cuaderno_id");
 -- salida_compartida_id: enlaza salidas conjuntas entre cuadernos sin escritura compartida
 -- cobertura_recorrido: fracción de la duración con posiciones registradas
 -- recorrido: lista de posiciones; fuente: primer_plano | gpx_importado
-CREATE TABLE "proy_salida" (
+CREATE TABLE IF NOT EXISTS "proy_salida" (
   "event_id" TEXT NOT NULL PRIMARY KEY,
   "cuaderno_id" TEXT NOT NULL,
   "event_date" TEXT NOT NULL,
@@ -91,9 +91,9 @@ CREATE TABLE "proy_salida" (
   "cerrada" INTEGER NOT NULL DEFAULT 0,
   CHECK ("cerrada" IN (0, 1))
 );
-CREATE INDEX "proy_salida_cuaderno_id" ON "proy_salida" ("cuaderno_id");
-CREATE INDEX "proy_salida_location_id" ON "proy_salida" ("location_id");
-CREATE INDEX "proy_salida_salida_compartida_id" ON "proy_salida" ("salida_compartida_id");
+CREATE INDEX IF NOT EXISTS "proy_salida_cuaderno_id" ON "proy_salida" ("cuaderno_id");
+CREATE INDEX IF NOT EXISTS "proy_salida_location_id" ON "proy_salida" ("location_id");
+CREATE INDEX IF NOT EXISTS "proy_salida_salida_compartida_id" ON "proy_salida" ("salida_compartida_id");
 
 -- Occurrence (nucleo)
 -- occurrence_id: UUID v4 generado en el dispositivo, nunca en el servidor
@@ -103,7 +103,7 @@ CREATE INDEX "proy_salida_salida_compartida_id" ON "proy_salida" ("salida_compar
 -- organism_quantity: para escalas de abundancia y cobertura
 -- degree_of_establishment: captive para los taxones domésticos del §7.1
 -- capturado_en: eje temporal de captura (ADR §2)
-CREATE TABLE "proy_ocurrencia" (
+CREATE TABLE IF NOT EXISTS "proy_ocurrencia" (
   "occurrence_id" TEXT NOT NULL PRIMARY KEY,
   "cuaderno_id" TEXT NOT NULL,
   "event_id" TEXT NOT NULL,
@@ -133,12 +133,13 @@ CREATE TABLE "proy_ocurrencia" (
   CHECK ("politica_sensibilidad" IN ('publico', 'difuso_1km', 'difuso_10km', 'retenido')),
   CHECK ("retractada" IN (0, 1))
 );
-CREATE INDEX "proy_ocurrencia_cuaderno_id" ON "proy_ocurrencia" ("cuaderno_id");
-CREATE INDEX "proy_ocurrencia_event_id" ON "proy_ocurrencia" ("event_id");
-CREATE INDEX "proy_ocurrencia_decimal_latitude" ON "proy_ocurrencia" ("decimal_latitude");
-CREATE INDEX "proy_ocurrencia_decimal_longitude" ON "proy_ocurrencia" ("decimal_longitude");
+CREATE INDEX IF NOT EXISTS "proy_ocurrencia_cuaderno_id" ON "proy_ocurrencia" ("cuaderno_id");
+CREATE INDEX IF NOT EXISTS "proy_ocurrencia_event_id" ON "proy_ocurrencia" ("event_id");
+CREATE INDEX IF NOT EXISTS "proy_ocurrencia_decimal_latitude" ON "proy_ocurrencia" ("decimal_latitude");
+CREATE INDEX IF NOT EXISTS "proy_ocurrencia_decimal_longitude" ON "proy_ocurrencia" ("decimal_longitude");
 
 -- Identification (extension)
+-- medio_id: el medio del que salió la hipótesis, si la propuso un modelo sobre un audio o una foto; así se sabe qué queda por analizar
 -- verbatim_identification: etiqueta literal del modelo, tal cual
 -- taxon_id: URI del taxón en GBIF
 -- gbif_taxon_key: clave numérica, para la clausura taxonómica del §6
@@ -146,10 +147,11 @@ CREATE INDEX "proy_ocurrencia_decimal_longitude" ON "proy_ocurrencia" ("decimal_
 -- modelo_version: versión de los PESOS, no del paquete (ADR §1.7)
 -- top_k: las cinco mejores etiquetas con su confianza
 -- identification_qualifier: cf., aff.
-CREATE TABLE "proy_identificacion" (
+CREATE TABLE IF NOT EXISTS "proy_identificacion" (
   "identification_id" TEXT NOT NULL PRIMARY KEY,
   "cuaderno_id" TEXT NOT NULL,
   "occurrence_id" TEXT NOT NULL,
+  "medio_id" TEXT,
   "verbatim_identification" TEXT NOT NULL,
   "scientific_name" TEXT,
   "taxon_rank" TEXT,
@@ -165,15 +167,16 @@ CREATE TABLE "proy_identificacion" (
   "identification_qualifier" TEXT,
   "identification_remarks" TEXT
 );
-CREATE INDEX "proy_identificacion_cuaderno_id" ON "proy_identificacion" ("cuaderno_id");
-CREATE INDEX "proy_identificacion_occurrence_id" ON "proy_identificacion" ("occurrence_id");
-CREATE INDEX "proy_identificacion_gbif_taxon_key" ON "proy_identificacion" ("gbif_taxon_key");
+CREATE INDEX IF NOT EXISTS "proy_identificacion_cuaderno_id" ON "proy_identificacion" ("cuaderno_id");
+CREATE INDEX IF NOT EXISTS "proy_identificacion_occurrence_id" ON "proy_identificacion" ("occurrence_id");
+CREATE INDEX IF NOT EXISTS "proy_identificacion_medio_id" ON "proy_identificacion" ("medio_id");
+CREATE INDEX IF NOT EXISTS "proy_identificacion_gbif_taxon_key" ON "proy_identificacion" ("gbif_taxon_key");
 
 -- Multimedia (extension)
 -- hash_sha256: el blob está direccionado por contenido; esto es el hecho que guarda el registro
 -- references: ruta remota, si se ha subido
 -- exif: íntegro en local, saneado al exportar (ADR §1.2)
-CREATE TABLE "proy_medio" (
+CREATE TABLE IF NOT EXISTS "proy_medio" (
   "medio_id" TEXT NOT NULL PRIMARY KEY,
   "cuaderno_id" TEXT NOT NULL,
   "occurrence_id" TEXT NOT NULL,
@@ -189,15 +192,15 @@ CREATE TABLE "proy_medio" (
   CHECK ("type" IN ('StillImage', 'Sound')),
   CHECK ("desadjuntado" IN (0, 1))
 );
-CREATE INDEX "proy_medio_cuaderno_id" ON "proy_medio" ("cuaderno_id");
-CREATE INDEX "proy_medio_occurrence_id" ON "proy_medio" ("occurrence_id");
-CREATE INDEX "proy_medio_hash_sha256" ON "proy_medio" ("hash_sha256");
+CREATE INDEX IF NOT EXISTS "proy_medio_cuaderno_id" ON "proy_medio" ("cuaderno_id");
+CREATE INDEX IF NOT EXISTS "proy_medio_occurrence_id" ON "proy_medio" ("occurrence_id");
+CREATE INDEX IF NOT EXISTS "proy_medio_hash_sha256" ON "proy_medio" ("hash_sha256");
 
 -- MeasurementOrFact (extension)
 -- measurement_type: acousticDetection:antropofonia | :geofonia
 -- measurement_value: etiqueta literal del modelo
 -- measurement_method: BirdNET <versión de los pesos>
-CREATE TABLE "proy_senal" (
+CREATE TABLE IF NOT EXISTS "proy_senal" (
   "senal_id" TEXT NOT NULL PRIMARY KEY,
   "cuaderno_id" TEXT NOT NULL,
   "event_id" TEXT NOT NULL,
@@ -211,13 +214,13 @@ CREATE TABLE "proy_senal" (
   "measurement_determined_date" TEXT,
   CHECK ("clase_etiqueta" IN ('taxon_silvestre', 'taxon_domestico', 'antropofonia', 'geofonia', 'artefacto'))
 );
-CREATE INDEX "proy_senal_cuaderno_id" ON "proy_senal" ("cuaderno_id");
-CREATE INDEX "proy_senal_event_id" ON "proy_senal" ("event_id");
-CREATE INDEX "proy_senal_medio_id" ON "proy_senal" ("medio_id");
+CREATE INDEX IF NOT EXISTS "proy_senal_cuaderno_id" ON "proy_senal" ("cuaderno_id");
+CREATE INDEX IF NOT EXISTS "proy_senal_event_id" ON "proy_senal" ("event_id");
+CREATE INDEX IF NOT EXISTS "proy_senal_medio_id" ON "proy_senal" ("medio_id");
 
 -- Nota (interno)
 -- occurrence_id: opcional: una nota puede no colgar de ninguna observación
-CREATE TABLE "proy_nota" (
+CREATE TABLE IF NOT EXISTS "proy_nota" (
   "nota_id" TEXT NOT NULL PRIMARY KEY,
   "cuaderno_id" TEXT NOT NULL,
   "occurrence_id" TEXT,
@@ -226,6 +229,6 @@ CREATE TABLE "proy_nota" (
   "retractada" INTEGER NOT NULL DEFAULT 0,
   CHECK ("retractada" IN (0, 1))
 );
-CREATE INDEX "proy_nota_cuaderno_id" ON "proy_nota" ("cuaderno_id");
-CREATE INDEX "proy_nota_occurrence_id" ON "proy_nota" ("occurrence_id");
-CREATE INDEX "proy_nota_event_id" ON "proy_nota" ("event_id");
+CREATE INDEX IF NOT EXISTS "proy_nota_cuaderno_id" ON "proy_nota" ("cuaderno_id");
+CREATE INDEX IF NOT EXISTS "proy_nota_occurrence_id" ON "proy_nota" ("occurrence_id");
+CREATE INDEX IF NOT EXISTS "proy_nota_event_id" ON "proy_nota" ("event_id");

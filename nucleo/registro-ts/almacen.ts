@@ -35,7 +35,7 @@ import { canonicoValor, verificarHash } from './suceso.ts';
 import type { Suceso } from './suceso.ts';
 import { claseDe } from './validacion.ts';
 
-export const VERSION_PROYECCION = 1;
+export const VERSION_PROYECCION = 2; // 2: Identification.cdc:medioID (ADR §15.15)
 
 export const COLUMNAS_SUCESO = [
   'suceso_id',
@@ -81,13 +81,35 @@ export class Almacen {
     const existe = await this.bd.una(
       "SELECT 1 AS x FROM sqlite_master WHERE type = 'table' AND name = 'suceso'",
     );
-    if (existe) return;
-    await this.bd.ejecutar(ESQUEMA_SQLITE);
-    await this.bd.correr(
-      'INSERT INTO proyeccion_meta (id, version, ultimo_hlc, reconstruido_en)' +
-        ' VALUES (1, ?, NULL, ?)',
-      [VERSION_PROYECCION, ahora()],
-    );
+    if (!existe) {
+      await this.bd.ejecutar(ESQUEMA_SQLITE);
+      await this.bd.correr(
+        'INSERT INTO proyeccion_meta (id, version, ultimo_hlc, reconstruido_en)' +
+          ' VALUES (1, ?, NULL, ?)',
+        [VERSION_PROYECCION, ahora()],
+      );
+      return;
+    }
+    const meta = await this.bd.una('SELECT version FROM proyeccion_meta WHERE id = 1');
+    if (!meta || meta.version !== VERSION_PROYECCION) await this.renovarProyeccion();
+  }
+
+  /** La forma de la proyección ha cambiado (una columna nueva, un índice): se tiran las tablas
+   * `proy_*`, se vuelve a correr el DDL —idempotente— y se repliega el registro. El registro no
+   * se toca: la proyección es una caché (P4), no hay nada que migrar. */
+  private async renovarProyeccion(): Promise<void> {
+    await this.bd.transaccion(async () => {
+      for (const clase of REGISTRO.clases) {
+        await this.bd.correr(`DROP TABLE IF EXISTS "${clase.tabla}"`);
+      }
+      await this.bd.ejecutar(ESQUEMA_SQLITE);
+      await this.bd.correr(
+        'INSERT OR IGNORE INTO proyeccion_meta (id, version, ultimo_hlc, reconstruido_en)' +
+          ' VALUES (1, ?, NULL, ?)',
+        [VERSION_PROYECCION, ahora()],
+      );
+      await this.reconstruirAqui();
+    });
   }
 
   async cerrar(): Promise<void> {

@@ -18,6 +18,10 @@ CABECERA = """\
 -- Motor: {motor}
 """
 
+# Todo el DDL es idempotente (IF NOT EXISTS / OR REPLACE): cuando cambia la forma de una tabla de
+# proyección, el almacén tira las tablas `proy_*`, vuelve a correr este mismo fichero y repliega el
+# registro (ADR-0001 §15.15). No hay migraciones de proyección porque la proyección no es un dato.
+#
 # El registro de sucesos no sale de terminos.toml: no es dominio, es la estructura del
 # ADR-0001 §4.1, idéntica en todo proyecto que use este núcleo.
 SUCESO_COLUMNAS = """\
@@ -37,12 +41,12 @@ SUCESO_COLUMNAS = """\
   UNIQUE ("dispositivo_id", "seq")"""
 
 SUCESO_INDICES = """\
-CREATE INDEX "suceso_sujeto"   ON "suceso" ("sujeto_tipo", "sujeto_id", "hlc");
-CREATE INDEX "suceso_hlc"      ON "suceso" ("hlc");
-CREATE INDEX "suceso_cuaderno" ON "suceso" ("cuaderno_id", "seq");"""
+CREATE INDEX IF NOT EXISTS "suceso_sujeto"   ON "suceso" ("sujeto_tipo", "sujeto_id", "hlc");
+CREATE INDEX IF NOT EXISTS "suceso_hlc"      ON "suceso" ("hlc");
+CREATE INDEX IF NOT EXISTS "suceso_cuaderno" ON "suceso" ("cuaderno_id", "seq");"""
 
 META = """\
-CREATE TABLE "proyeccion_meta" (
+CREATE TABLE IF NOT EXISTS "proyeccion_meta" (
   "id"          {entero} NOT NULL PRIMARY KEY,
   "version"     {entero} NOT NULL,
   "ultimo_hlc"  TEXT,
@@ -118,16 +122,16 @@ def _tabla(clase: Clase, motor: str) -> str:
     encabezado = f'-- {clase.nombre} ({clase.papel})'
     if notas:
         encabezado += "\n" + notas
-    sql = f'{encabezado}\nCREATE TABLE "{clase.tabla}" (\n{cuerpo}\n);'
+    sql = f'{encabezado}\nCREATE TABLE IF NOT EXISTS "{clase.tabla}" (\n{cuerpo}\n);'
 
     indices = [
-        f'CREATE INDEX "{clase.tabla}_{c.columna}" ON "{clase.tabla}" ("{c.columna}");'
+        f'CREATE INDEX IF NOT EXISTS "{clase.tabla}_{c.columna}" ON "{clase.tabla}" ("{c.columna}");'
         for c in clase.persistentes
         if c.indice
     ]
     if geo and motor == "postgres":
         indices.append(
-            f'CREATE INDEX "{clase.tabla}_geom" ON "{clase.tabla}" USING GIST ("geom");'
+            f'CREATE INDEX IF NOT EXISTS "{clase.tabla}_geom" ON "{clase.tabla}" USING GIST ("geom");'
         )
     if indices:
         sql += "\n" + "\n".join(indices)
@@ -138,21 +142,21 @@ def _inmutabilidad(motor: str) -> str:
     if motor == "sqlite":
         return """\
 -- El registro es añadido: ni UPDATE ni DELETE (ADR-0001 §4.1).
-CREATE TRIGGER "suceso_sin_update" BEFORE UPDATE ON "suceso" BEGIN
+CREATE TRIGGER IF NOT EXISTS "suceso_sin_update" BEFORE UPDATE ON "suceso" BEGIN
   SELECT RAISE(ABORT, 'el registro de sucesos es anadido: prohibido UPDATE');
 END;
-CREATE TRIGGER "suceso_sin_delete" BEFORE DELETE ON "suceso" BEGIN
+CREATE TRIGGER IF NOT EXISTS "suceso_sin_delete" BEFORE DELETE ON "suceso" BEGIN
   SELECT RAISE(ABORT, 'el registro de sucesos es anadido: prohibido DELETE');
 END;"""
     return """\
 -- El registro es añadido: ni UPDATE ni DELETE (ADR-0001 §4.1).
 -- Se usa un disparador que lanza excepción, no una REGLA DO INSTEAD NOTHING: una escritura
 -- prohibida debe fallar a la vista, no desaparecer en silencio.
-CREATE FUNCTION "suceso_es_inmutable"() RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE OR REPLACE FUNCTION "suceso_es_inmutable"() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
   RAISE EXCEPTION 'el registro de sucesos es anadido: prohibido % en suceso', TG_OP;
 END $$;
-CREATE TRIGGER "suceso_inmutable" BEFORE UPDATE OR DELETE ON "suceso"
+CREATE OR REPLACE TRIGGER "suceso_inmutable" BEFORE UPDATE OR DELETE ON "suceso"
   FOR EACH ROW EXECUTE FUNCTION "suceso_es_inmutable"();"""
 
 
@@ -169,7 +173,7 @@ def generar(registro: Registro, motor: str) -> str:
 
     bloques.append(
         "-- Registro de sucesos: la única fuente de verdad.\n"
-        f'CREATE TABLE "suceso" (\n{SUCESO_COLUMNAS.format(entero=entero, json=json_tipo)}\n);\n'
+        f'CREATE TABLE IF NOT EXISTS "suceso" (\n{SUCESO_COLUMNAS.format(entero=entero, json=json_tipo)}\n);\n'
         + SUCESO_INDICES
     )
     bloques.append(_inmutabilidad(motor))

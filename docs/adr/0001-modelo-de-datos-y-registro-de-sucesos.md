@@ -486,13 +486,21 @@ ecología fluvial y con `riesgo-tendidos-aves` (ruido de infraestructura junto a
 serie del §6 pasa a poder consultarse por sitio con dos métricas paralelas: riqueza detectada y
 presión acústica.
 
-**Cómo se construye la tabla de clases sin etiquetar 6.500 filas a mano.** Automático primero:
-la parte científica de cada etiqueta se empareja contra el árbol de GBIF —reutilizando
-`clave_especie()` de `riesgo-tendidos-aves`— y todo lo que resuelve a un taxón silvestre queda
-`taxon_silvestre`. Lo que no resuelve cae a `datos/etiquetas_birdnet.csv`, que serán unas pocas
-docenas de filas curadas a mano, comprometidas en el repositorio. Y **una prueba que falla si
-alguna etiqueta del modelo no tiene clase**: al subir de versión de BirdNET, las etiquetas
-nuevas obligan a curarlas en vez de tratarse mal en silencio.
+**Cómo se construye la tabla de clases sin etiquetar 6.500 filas a mano.** Hecho, y salió
+mejor de lo previsto: de las 6.522 etiquetas de los pesos V2.4, **5.908 aparecen tal cual en el
+subárbol de Aves que ya está en local** y 603 más las resuelve la API de GBIF (ranas, sapos,
+grillos, mamíferos, y las aves que BirdNET nombra según Clements y GBIF según otra autoridad:
+*Curruca communis* → *Sylvia communis*, 498 sinónimos en total). **Curadas a mano: once**, las
+que no son un binomio (Dog, Engine, Fireworks, Gun, Siren, Power tools, las tres de humano,
+Environmental, Noise). Están en `datos/birdnet/clases_manuales.tsv`; el resto lo empareja
+`datos/birdnet/emparejar.py`, que deja la tabla en `datos/birdnet/V2.4/etiquetas.tsv` con la
+clave del nombre **aceptado** y cachea las respuestas de GBIF para no depender de la red al
+regenerar. Una sola etiqueta se queda sin clave (*Dicrurus divaricatus*: GBIF no da especie), y
+la prueba la nombra: si mañana son diez, se ve.
+
+Y las pruebas que exige la restricción: **ninguna etiqueta sin clase** —el generador *falla* si
+aparece una no binomial que nadie ha curado, así que subir de versión de pesos obliga a mirarlas—
+y el `enum` de `cdc:claseEtiqueta` del registro tiene que coincidir con las clases del código.
 
 **Límite honesto que va en la interfaz.** Las clases de ruido de BirdNET son presencia o
 ausencia en ventanas de 3 s, no un sonómetro. La métrica derivada es «fracción de segmentos con
@@ -657,7 +665,7 @@ cuaderno-campo/
 | I4 ~ | Consulta de series con subárbol local, por taxón y por sitio | series conocidas, clausura taxonómica ✔ (núcleo TS); falta la pantalla |
 | I5 ✔ | Exportación DwC-A (§15.14) | estructura contra `meta.xml`, fuga de EXIF ✔; validador de GBIF, paso manual (403 a la API anónima) |
 | I7 ✔ | Copia de seguridad: ZIP con el registro y los medios (§15.12) | ida y vuelta entre lenguajes, restauración idempotente |
-| I6 | Trabajador BirdNET, cola en PostgreSQL, clases de etiqueta | audio de oro con hipótesis y señales esperadas; ninguna etiqueta sin clase |
+| I6 ✔ | Trabajador BirdNET sobre una copia, clases de etiqueta (§15.16) | hipótesis, taxones y señales esperadas con modelo falso; ninguna etiqueta sin clase; los pesos reales contra `sample.wav` |
 
 I0 e I1 son el 70 % del valor y todo el riesgo: son la única parte que, mal hecha, obliga a
 tirar datos ya recogidos. Si hay que recortar, el orden de sacrificio es I3, luego I4.
@@ -1219,6 +1227,67 @@ restrictiva de las tres por coherencia con el resto del proyecto; el observador 
 *Señales: el `measurementType` del corpus dice «etiqueta BirdNET».* Debería ser
 `acousticDetection:<clase>` como fija el §8; se corrige en el trabajador de BirdNET (I6), que es
 quien emite `senal.detectada`, y el corpus se regenera entonces.
+
+### 15.15 La proyección tiene versión, y cambiar su forma no es una migración
+
+Añadir `cdc:medioID` a `Identification` cambia una columna de `proy_identificacion`. En un
+proyecto con ORM eso es una migración: un script que altera la tabla en su sitio, con su ida y su
+vuelta, y el riesgo de que el dato quede a medio convertir. Aquí no hace falta ninguna de las dos
+cosas, porque **la proyección es una caché del registro** (P4) y el registro no cambia.
+
+`proyeccion_meta.version` guarda la forma con la que se escribieron las tablas. Al abrir, si no
+es la del código, el almacén tira las tablas `proy_*`, vuelve a correr el DDL generado y repliega
+el registro entero. Para que eso funcione, todo el DDL es idempotente (`IF NOT EXISTS`, y
+`OR REPLACE` en las funciones y disparadores de PostgreSQL): el mismo fichero sirve para crear de
+cero y para volver a crear lo que se acaba de tirar. Los dos almacenes, el de Python y el del
+teléfono, lo hacen igual, y los dos lo prueban: se le quita una columna a un almacén lleno, se le
+marca la versión anterior, se abre, y la proyección que sale es exactamente la de antes con el
+registro intacto.
+
+Lo que sí seguiría siendo una migración de verdad es cambiar la **tabla `suceso`** o la forma de
+la carga de un tipo de suceso ya emitido. Para eso está `tipo_version` (§4.3): el pliegue admite
+las dos versiones y ninguna carga vieja se reescribe.
+
+### 15.16 El trabajador de BirdNET es otro dispositivo, no un servidor
+
+El §7 hablaba de una cola en PostgreSQL. No hay servidor y no lo va a haber pronto, así que la
+cola sobra: **el trabajador es un dispositivo más del cuaderno**, con su `dispositivo_id`, su
+cadena de `seq` y su reloj, y el camino es el que ya existe para las copias.
+
+    python -m trabajadores.birdnet analizar copia.zip
+
+Restaura la copia en su propio almacén (ingesta normal, idempotente), analiza lo pendiente, y
+deja un JSONL con **todo** lo que ese dispositivo ha escrito alguna vez. En el teléfono,
+«Restaurar…» con ese fichero: lo repetido se ignora por P3 y lo nuevo aparece como hipótesis de
+BirdNET. Sin API, sin sincronización, sin nada encendido.
+
+*La cola no existe como estructura.* Un audio está pendiente si es un `Sound` adjunto de una
+ocurrencia viva del cuaderno y **ninguna hipótesis con `cdc:medioID` igual al suyo lleva la firma
+de BirdNET con esos pesos**. Por eso `Identification` gana `cdc:medioID` (§15.15) y por eso el
+trabajador emite siempre al menos una hipótesis por audio: la hipótesis *es* la marca de «ya
+oído». Cambiar de versión de pesos vuelve a encolarlo todo, que es lo que se quiere.
+
+*Qué emite por cada audio.* Ventanas de 3 s, sin solapamiento, como BirdNET por defecto. De cada
+etiqueta se guarda su **máximo sobre todas las ventanas**, no una detección por ventana: cinco
+hipótesis por audio, no doscientas. Las que superan 0,25 —el umbral de BirdNET— salen como
+`identificacion.propuesta` con su `cdc:topK`, la ventana donde alcanzó el máximo y el filtro que
+se aplicó, en `identificationRemarks`. Las que tienen anclaje en GBIF llevan además su
+`taxon.resuelto`. Todo lo que no es `taxon_silvestre` y supera el umbral sale como
+`senal.detectada` **por ventana**, porque ahí sí interesa cuándo: `acousticDetection:<clase>` en
+`measurementType` y `BirdNET <pesos>` en `measurementMethod`, que era lo que quedaba pendiente en
+§15.14. El corpus ya está regenerado con ese vocabulario.
+
+*Si el filtro se lo lleva todo, no se calla.* El filtro geográfico y fenológico de BirdNET
+(coordenadas de la ocurrencia, semana de captura en su calendario de 48) descarta lo que no toca
+en el Pas en agosto. Pero si deja el audio sin ninguna etiqueta, se propone la mejor **sin
+filtro** y se dice en las observaciones; igual que si nada supera el umbral, donde queda la mejor
+etiqueta con su confianza real por baja que sea. La confianza se registra tal cual, nunca
+maquillada (§1.7). Sin coordenadas no hay filtro, y también se dice.
+
+*Sin TensorFlow para probarlo.* `birdnet_analyzer` solo se importa dentro de `ModeloBirdNET`; el
+resto del trabajador habla con un `Protocol` de tres métodos. Las pruebas del registro corren en
+el entorno del núcleo con un modelo falso de ventanas fijas, y las de los pesos reales solo donde
+está instalado el paquete (`trabajadores/birdnet/.venv`, TensorFlow, ~600 MB, fuera del CI).
 
 ---
 

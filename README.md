@@ -135,6 +135,32 @@ que sale va sin EXIF, XMP ni IPTC. El EXIF local queda intacto.
 así que las pruebas comprueban la estructura (columnas contra `meta.xml`, enlaces al núcleo) y el
 archivo se sube a mano a <https://www.gbif.org/tools/data-validator> antes de publicarlo.
 
+## Aves por el canto: el trabajador de BirdNET
+
+BirdNET no corre en el teléfono. Corre en el ordenador, sobre una copia, y es **otro dispositivo
+del mismo cuaderno**: escribe sucesos con su propio identificador y los devuelve en un JSONL que
+el teléfono restaura como cualquier otra copia.
+
+```bash
+python -m venv trabajadores/birdnet/.venv
+trabajadores/birdnet/.venv/Scripts/pip install -r trabajadores/birdnet/requirements.txt
+trabajadores/birdnet/.venv/Scripts/python -m trabajadores.birdnet analizar copia.zip
+```
+
+`pendientes` en vez de `analizar` dice qué audios faltan sin cargar el modelo. Opciones:
+`--cuaderno ID`, `--dispositivo ID`, `--min-confianza X` (0,25 por defecto), `--sin-contexto`
+(no aplicar el filtro geográfico y fenológico), `--maximo N`, `--hilos N`, `--estado DIR`.
+
+Por cada audio salen hasta cinco `identificacion.propuesta` con su confianza y su top-5, su
+`taxon.resuelto` cuando la etiqueta tiene anclaje en GBIF, y una `senal.detectada` por ventana de
+3 s para todo lo que no es un ave silvestre: perro, motor, sirena, voz, viento, ruido. Se
+registran, no se descartan. Ninguna hipótesis se acepta sola: eso lo haces tú en el teléfono.
+
+Las 6.522 etiquetas de los pesos V2.4 están clasificadas en `datos/birdnet/V2.4/etiquetas.tsv`,
+que genera `datos/birdnet/emparejar.py` contra el subárbol local de Aves y la API de GBIF. Once
+filas están curadas a mano, las que no son un nombre científico. Si al subir de versión de pesos
+aparece una etiqueta nueva sin clase, el generador falla.
+
 ## Estado
 
 Fase 0, en curso.
@@ -144,7 +170,10 @@ TypeScript sobre wa-sqlite/OPFS; captura de nota, foto, audio (WAV) con su cola,
 zona; enmienda, retractación y política de sensibilidad; determinación humana con el subárbol de
 Aves de GBIF en local; consulta de series (taxón × radio × ventana temporal) en el núcleo; copia
 de seguridad y restauración; exportación Darwin Core Archive con saneado de metadatos; interfaz
-de campo instalable.
+de campo instalable; identificación de aves por canto con BirdNET en local.
 
-Pendiente: pantalla de series; mapa sin conexión; el trabajador de BirdNET; validar un archivo
-real en gbif.org.
+Hecho también: el trabajador de BirdNET, con las etiquetas clasificadas y su vuelta al teléfono
+por copia.
+
+Pendiente: pantalla de series; mapa sin conexión; validar un archivo real en gbif.org; una salida
+de verdad al Pas con audio y su análisis.

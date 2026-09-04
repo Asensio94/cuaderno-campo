@@ -1,0 +1,12 @@
+etiqueta	clase	nota
+Dog_Dog	taxon_domestico	Canis familiaris; no es una hipótesis sobre la ocurrencia, es una señal del medio
+Engine_Engine	antropofonia
+Fireworks_Fireworks	antropofonia
+Gun_Gun	antropofonia
+Siren_Siren	antropofonia
+Power tools_Power tools	antropofonia
+Human vocal_Human vocal	antropofonia
+Human non-vocal_Human non-vocal	antropofonia
+Human whistle_Human whistle	antropofonia
+Environmental_Environmental	geofonia	viento, lluvia, agua: el propio BirdNET lo agrupa así
+Noise_Noise	artefacto	ruido de la cadena de captura, no del entorno

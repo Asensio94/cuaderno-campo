@@ -701,6 +701,15 @@ export const REGISTRO: Registro = {
           "derivado": false
         },
         {
+          "termino": "cdc:medioID",
+          "columna": "medio_id",
+          "tipo": "texto",
+          "clave": false,
+          "requerido": false,
+          "exportar": false,
+          "derivado": false
+        },
+        {
           "termino": "dwc:verbatimIdentification",
           "columna": "verbatim_identification",
           "tipo": "texto",
@@ -1483,6 +1492,8 @@ export interface FilaIdentification {
   cuaderno_id: string;
   /** dwc:occurrenceID */
   occurrence_id: string;
+  /** cdc:medioID — el medio del que salió la hipótesis, si la propuso un modelo sobre un audio o una foto; así se sabe qué queda por analizar */
+  medio_id?: string | null;
   /** dwc:verbatimIdentification — etiqueta literal del modelo, tal cual */
   verbatim_identification: string;
   /** dwc:scientificName */

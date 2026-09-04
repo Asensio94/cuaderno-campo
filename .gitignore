@@ -10,3 +10,7 @@ __pycache__/
 # Entornos de Python de los trabajadores (birdnet-analyzer arrastra TensorFlow: no se versiona).
 .venv/
 trabajadores/*/.venv/
+
+# Estado del trabajador de BirdNET: su almacén, sus medios y su JSONL de vuelta. Son datos, no
+# fuente; el registro de verdad vive en el teléfono.
+trabajadores/*/estado/

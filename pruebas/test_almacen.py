@@ -409,3 +409,31 @@ def test_las_listas_se_guardan_con_la_serializacion_canonica(
     assert " " not in texto.replace('"', "")[:200] or ": " not in texto
     assert json.dumps(json.loads(texto), ensure_ascii=False, sort_keys=True,
                       separators=(",", ":")) == texto
+
+
+def test_una_proyeccion_de_version_anterior_se_renueva_al_abrir(
+    tmp_path, registro: Registro, corpus: list[Suceso]
+) -> None:
+    """ADR §15.15: cuando cambia la forma de una tabla `proy_*`, no hay migración. Al abrir, si la
+    versión guardada no es la actual, se tiran las tablas de proyección, se vuelve a correr el DDL
+    y se repliega. El registro no se toca. Aquí se simula un almacén viejo quitándole una columna
+    y marcándolo con la versión 1."""
+    from nucleo.registro.almacen import VERSION_PROYECCION
+
+    ruta = tmp_path / "viejo.sqlite"
+    viejo = Almacen.abrir(ruta, registro)
+    viejo.anadir(corpus)
+    esperada = sin_vacias(viejo.proyeccion())
+    viejo.cx.execute('DROP INDEX "proy_identificacion_medio_id"')
+    viejo.cx.execute('ALTER TABLE "proy_identificacion" DROP COLUMN "medio_id"')
+    viejo.cx.execute("UPDATE proyeccion_meta SET version = 1")
+    viejo.cx.commit()
+    viejo.cerrar()
+
+    nuevo = Almacen.abrir(ruta, registro)
+    columnas = {f["name"] for f in nuevo.cx.execute('PRAGMA table_info("proy_identificacion")')}
+    assert "medio_id" in columnas
+    assert nuevo.cx.execute("SELECT version FROM proyeccion_meta").fetchone()[0] == VERSION_PROYECCION
+    assert sin_vacias(nuevo.proyeccion()) == esperada
+    assert len(nuevo.todos()) == len(corpus) - 1  # el registro, intacto (el corpus trae un duplicado)
+    nuevo.cerrar()

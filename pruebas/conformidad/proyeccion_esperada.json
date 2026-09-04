@@ -17,6 +17,7 @@
     "2241364e-52af-49a9-8ea1-38270906e89e": {
       "cdc:confianza": 0.0917,
       "cdc:cuadernoID": "cuaderno-pablo",
+      "cdc:medioID": "2b5ff385-c8ce-46e6-8c07-eb65c585ef95",
       "cdc:modeloVersion": "2.4",
       "dwc:dateIdentified": "2025-08-24T20:02:11+02:00",
       "dwc:identificationID": "2241364e-52af-49a9-8ea1-38270906e89e",
@@ -28,6 +29,7 @@
     "8d164235-6eb0-41f8-8544-1da2c1b18fe4": {
       "cdc:confianza": 0.0311,
       "cdc:cuadernoID": "cuaderno-pablo",
+      "cdc:medioID": "2b5ff385-c8ce-46e6-8c07-eb65c585ef95",
       "cdc:modeloVersion": "2.4",
       "dwc:identificationID": "8d164235-6eb0-41f8-8544-1da2c1b18fe4",
       "dwc:identificationRemarks": "el reclamo es de petirrojo, no de curruca",
@@ -40,6 +42,7 @@
       "cdc:confianza": 0.8412,
       "cdc:cuadernoID": "cuaderno-pablo",
       "cdc:gbifTaxonKey": 2492462,
+      "cdc:medioID": "2b5ff385-c8ce-46e6-8c07-eb65c585ef95",
       "cdc:modeloVersion": "2.4",
       "cdc:topK": [
         {
@@ -233,8 +236,9 @@
       "cdc:medioID": "2b5ff385-c8ce-46e6-8c07-eb65c585ef95",
       "cdc:senalID": "3d7d2737-ba27-454f-8dd8-917f96575b61",
       "dwc:eventID": "adebb137-1fc0-4343-8fb2-f98b83f90542",
-      "dwc:measurementMethod": "birdnet-analyzer 2.4",
-      "dwc:measurementType": "etiqueta BirdNET",
+      "dwc:measurementDeterminedDate": "2025-08-24T20:02:11+02:00",
+      "dwc:measurementMethod": "BirdNET 2.4",
+      "dwc:measurementType": "acousticDetection:antropofonia",
       "dwc:measurementValue": "Engine_Engine"
     }
   },

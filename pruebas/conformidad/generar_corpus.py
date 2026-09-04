@@ -159,6 +159,7 @@ def construir() -> Guion:
     hip_petirrojo = g.nuevo()
     g.w(yo, "identificacion.propuesta", hip_petirrojo, {
         "dwc:occurrenceID": petirrojo,
+        "cdc:medioID": audio,
         "dwc:verbatimIdentification": "Erithacus rubecula_European Robin",
         "dwc:identifiedBy": "birdnet-analyzer",
         "cdc:modeloVersion": "2.4",
@@ -173,6 +174,7 @@ def construir() -> Guion:
     hip_chochin = g.nuevo()
     g.w(yo, "identificacion.propuesta", hip_chochin, {
         "dwc:occurrenceID": petirrojo,
+        "cdc:medioID": audio,
         "dwc:verbatimIdentification": "Troglodytes troglodytes_Eurasian Wren",
         "dwc:identifiedBy": "birdnet-analyzer",
         "cdc:modeloVersion": "2.4",
@@ -195,6 +197,7 @@ def construir() -> Guion:
     hip_curruca = g.nuevo()
     g.w(yo, "identificacion.propuesta", hip_curruca, {
         "dwc:occurrenceID": petirrojo,
+        "cdc:medioID": audio,
         "dwc:verbatimIdentification": "Sylvia atricapilla_Eurasian Blackcap",
         "dwc:identifiedBy": "birdnet-analyzer",
         "cdc:modeloVersion": "2.4",
@@ -208,12 +211,13 @@ def construir() -> Guion:
     g.w(yo, "senal.detectada", senal, {
         "dwc:eventID": salida,
         "cdc:medioID": audio,
-        "dwc:measurementType": "etiqueta BirdNET",
+        "dwc:measurementType": "acousticDetection:antropofonia",
         "dwc:measurementValue": "Engine_Engine",
         "cdc:claseEtiqueta": "antropofonia",
         "cdc:confianza": 0.6033,
         "cdc:desplazamientoSegundos": 12.0,
-        "dwc:measurementMethod": "birdnet-analyzer 2.4",
+        "dwc:measurementMethod": "BirdNET 2.4",
+        "dwc:measurementDeterminedDate": "2025-08-24T20:02:11+02:00",
     })
 
     nota = g.nuevo()

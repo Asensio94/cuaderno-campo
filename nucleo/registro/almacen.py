@@ -51,7 +51,7 @@ from .pliegue import (
 )
 from .suceso import Suceso, canonico_valor
 
-VERSION_PROYECCION = 1
+VERSION_PROYECCION = 2  # 2: Identification.cdc:medioID (ADR §15.15)
 ESQUEMA = RAIZ_NUCLEO / "generado" / "001_esquema.sqlite.sql"
 
 COLUMNAS_SUCESO = (
@@ -104,15 +104,32 @@ class Almacen:
         existe = self.cx.execute(
             "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'suceso'"
         ).fetchone()
-        if existe:
+        if not existe:
+            self.cx.executescript(ESQUEMA.read_text(encoding="utf-8"))
+            self.cx.execute(
+                "INSERT INTO proyeccion_meta (id, version, ultimo_hlc, reconstruido_en)"
+                " VALUES (1, ?, NULL, ?)",
+                (VERSION_PROYECCION, _ahora()),
+            )
+            self.cx.commit()
             return
+        fila = self.cx.execute("SELECT version FROM proyeccion_meta WHERE id = 1").fetchone()
+        if fila is None or fila["version"] != VERSION_PROYECCION:
+            self._renovar_proyeccion()
+
+    def _renovar_proyeccion(self) -> None:
+        """La forma de la proyección ha cambiado (una columna nueva, un índice): se tiran las
+        tablas `proy_*`, se vuelve a correr el DDL —idempotente— y se repliega el registro. El
+        registro no se toca: la proyección es una caché (P4), no hay nada que migrar."""
+        for clase in self.registro.clases:
+            self.cx.execute(f'DROP TABLE IF EXISTS "{clase.tabla}"')
         self.cx.executescript(ESQUEMA.read_text(encoding="utf-8"))
         self.cx.execute(
-            "INSERT INTO proyeccion_meta (id, version, ultimo_hlc, reconstruido_en)"
+            "INSERT OR IGNORE INTO proyeccion_meta (id, version, ultimo_hlc, reconstruido_en)"
             " VALUES (1, ?, NULL, ?)",
             (VERSION_PROYECCION, _ahora()),
         )
-        self.cx.commit()
+        self.reconstruir()
 
     def cerrar(self) -> None:
         self.cx.close()

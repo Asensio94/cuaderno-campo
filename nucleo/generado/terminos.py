@@ -181,6 +181,8 @@ class FilaIdentification(TypedDict):
     # cdc:cuadernoID
     occurrence_id: str
     # dwc:occurrenceID
+    medio_id: NotRequired[str | None]
+    # cdc:medioID: el medio del que salió la hipótesis, si la propuso un modelo sobre un audio o una foto; así se sabe qué queda por analizar
     verbatim_identification: str
     # dwc:verbatimIdentification: etiqueta literal del modelo, tal cual
     scientific_name: NotRequired[str | None]
