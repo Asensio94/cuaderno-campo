@@ -645,6 +645,13 @@ fieldset:disabled {
 .entrada.retractada .que {
   text-decoration: line-through;
 }
+/* El nombre propuesto y su marca de «sin aceptar», en la misma línea. */
+.que.nombre.propuesta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
 .entrada.retractada {
   opacity: 0.55;
 }
@@ -962,7 +969,10 @@ pre {
   border: 1px solid var(--verde);
   border-radius: var(--radio);
   background: var(--bien-fondo);
-  color: var(--verde-tinta);
+  /* `--verde-tinta` es la tinta de encima del verde macizo: sobre `--bien-fondo` sale blanco
+     sobre verde pálido en claro y casi negro sobre verde oscuro en oscuro. Invisible en los dos.
+     La pareja de `--bien-fondo` es `--bien`, como en `.gps.bien` y `.etiqueta.bien`. */
+  color: var(--bien);
 }
 .elegido .tenue {
   color: var(--tenue);
@@ -1034,7 +1044,8 @@ pre {
   padding: 0;
   border: 0;
   background: none;
-  color: var(--verde-tinta);
+  /* Mismo error que tenía `.elegido`: sobre el papel, `--verde-tinta` es un enlace invisible. */
+  color: var(--verde);
   font: inherit;
   font-weight: 600;
   text-decoration: underline;

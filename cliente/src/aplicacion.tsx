@@ -243,6 +243,10 @@ function Hipotesis({
     );
   };
 
+  // Determinar es elegir del árbol; escribir un texto libre es proponer. Un literal sin taxón
+  // aceptado sería una determinación que no se puede exportar como tal (restricción 3): entra
+  // como hipótesis y se acepta con el botón de aceptar, que es un acto aparte y visible.
+  const conTaxon = eleccion?.taxon !== undefined;
   const determinar = () => {
     if (!eleccion) return;
     correr(
@@ -251,7 +255,7 @@ function Hipotesis({
         nombre: eleccion.nombre,
         taxon: eleccion.taxon,
         versionArbol: eleccion.taxon ? versionArbol() : undefined,
-        aceptar: true,
+        aceptar: conTaxon,
       }),
     );
   };
@@ -325,7 +329,7 @@ function Hipotesis({
                 onClick={determinar}
               >
                 <Icono n="etiqueta" tam={18} />
-                Determinar
+                {conTaxon ? 'Determinar' : 'Proponer'}
               </button>
             </div>
           </>
@@ -760,6 +764,21 @@ function entrelazar(observaciones: readonly Observacion[], notas: readonly Nota[
   return entradas.sort((a, b) => b.cuando.localeCompare(a.cuando));
 }
 
+/** La hipótesis que representa a una observación sin determinar en un listado: la de la persona
+ * antes que la de un modelo —es lo que escribió quien estaba mirando— y, entre modelos, la de más
+ * confianza. Una rechazada no representa nada. */
+function masSenalada(ids: readonly Identificacion[]): Identificacion | undefined {
+  const vivas = ids.filter((i) => i.estado !== 'rejected');
+  return (
+    vivas.find((i) => !i.modeloVersion) ??
+    vivas.reduce<Identificacion | undefined>(
+      (mejor, i) =>
+        mejor === undefined || (i.confianza ?? 0) > (mejor.confianza ?? 0) ? i : mejor,
+      undefined,
+    )
+  );
+}
+
 function TarjetaObservacion({
   o,
   desde,
@@ -769,6 +788,7 @@ function TarjetaObservacion({
   desde: string;
   abrir: () => void;
 }) {
+  const propuesta = o.determinacion ? undefined : masSenalada(o.identificaciones);
   return (
     <li className={`entrada ${o.retractada ? 'retractada' : ''}`}>
       <button type="button" className="entrada-boton" onClick={abrir}>
@@ -798,12 +818,21 @@ function TarjetaObservacion({
           </>
         ) : (
           <>
+            {/* Sin determinar no es sin nada que decir: si hay hipótesis, la tarjeta enseña el
+                nombre que se escribió o que propuso el modelo, con la marca de que nadie lo ha
+                aceptado. Antes solo salía la cuenta, y quien apuntó «petirrojo» no lo veía. */}
+            {propuesta && (
+              <span className="que nombre propuesta">
+                <i>{propuesta.cientifico ?? propuesta.literal}</i>
+                <span className="etiqueta">sin aceptar</span>
+              </span>
+            )}
             <span className={`que ${o.comentario ? '' : 'tenue'}`}>
               {o.comentario || 'Sin comentario'}
             </span>
-            {o.identificaciones.length > 0 && (
+            {o.identificaciones.length > 1 && (
               <span className="que tenue">
-                {plural(o.identificaciones.length, 'hipótesis sin aceptar', 'hipótesis sin aceptar')}
+                y {plural(o.identificaciones.length - 1, 'hipótesis más', 'hipótesis más')}
               </span>
             )}
           </>
@@ -1010,15 +1039,17 @@ function HojaObservacion({
         : undefined,
     })
       .then(async (id) => {
-        // La determinación del observador es una hipótesis aceptada de una vez: quien mira es
-        // quien identifica. Si no eligió del árbol, va sin taxón, literal.
+        // Una elección del árbol sí es una determinación humana y se acepta de una vez: quien
+        // mira es quien identifica. Un texto libre no. «Petirrojo» no es un nombre científico y
+        // sin taxón no hay nada que aceptar, así que entra como hipótesis y se acepta a mano
+        // cuando alguien la resuelva (restricción 3). Es lo que ya decía el buscador.
         if (eleccion) {
           await proponerIdentificacion(observador, {
             ocurrenciaId: id,
             nombre: eleccion.nombre,
             taxon: eleccion.taxon,
             versionArbol: eleccion.taxon ? versionArbol() : undefined,
-            aceptar: true,
+            aceptar: eleccion.taxon !== undefined,
           });
         }
         if (sensibilidad !== 'publico') await fijarSensibilidad(id, sensibilidad);
@@ -1551,10 +1582,8 @@ export function Aplicacion() {
 // consigue sus puntos de un sitio, y `PantallaMapa` no tiene que saber de cuál.
 
 function etiquetaDe(o: Observacion): string {
-  const d = o.determinacion;
+  const d = o.determinacion ?? masSenalada(o.identificaciones);
   if (d) return d.cientifico ?? d.literal;
-  const primera = o.identificaciones[0];
-  if (primera) return primera.cientifico ?? primera.literal;
   return 'Sin identificar';
 }
 
