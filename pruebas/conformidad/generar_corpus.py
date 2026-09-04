@@ -180,8 +180,8 @@ def construir() -> Guion:
     g.w(yo, "taxon.resuelto", hip_petirrojo, {
         "dwc:scientificName": "Erithacus rubecula",
         "dwc:taxonRank": "species",
-        "dwc:taxonID": "https://www.gbif.org/species/2492457",
-        "cdc:gbifTaxonKey": 2492457,
+        "dwc:taxonID": "https://www.gbif.org/species/2492462",
+        "cdc:gbifTaxonKey": 2492462,
         "cdc:versionArbolGbif": "2025-08-01",
     })
 

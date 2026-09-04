@@ -39,7 +39,7 @@
     "c54c265e-9a17-44d7-8f11-92d6b19eaba6": {
       "cdc:confianza": 0.8412,
       "cdc:cuadernoID": "cuaderno-pablo",
-      "cdc:gbifTaxonKey": 2492457,
+      "cdc:gbifTaxonKey": 2492462,
       "cdc:modeloVersion": "2.4",
       "cdc:topK": [
         {
@@ -62,7 +62,7 @@
       "dwc:identifiedBy": "birdnet-analyzer",
       "dwc:occurrenceID": "bfdf9e5f-f106-49c5-8109-231b467375eb",
       "dwc:scientificName": "Erithacus rubecula",
-      "dwc:taxonID": "https://www.gbif.org/species/2492457",
+      "dwc:taxonID": "https://www.gbif.org/species/2492462",
       "dwc:taxonRank": "species",
       "dwc:verbatimIdentification": "Erithacus rubecula_European Robin"
     }

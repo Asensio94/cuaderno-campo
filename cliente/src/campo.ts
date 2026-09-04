@@ -135,16 +135,24 @@ export interface Anotacion {
   readonly comentario?: string;
   readonly cuantos?: number;
   readonly foto?: Blob;
+  /** Grabación WAV de `audio.ts`, con su instante de inicio y los ajustes que aplicó el
+   * navegador. */
+  readonly sonido?: {
+    readonly blob: Blob;
+    readonly empezadaEn: string;
+    readonly ajustes: Record<string, unknown>;
+  };
 }
 
-/** Una observación: la ocurrencia y, si la hay, su foto. Dos sucesos, no uno.
+/** Una observación: la ocurrencia y, si los hay, su foto y su sonido. Un suceso por cosa.
  *
- * La foto se guarda antes de emitir nada. Si falla el guardado no queda una ocurrencia que
+ * Los medios se guardan antes de emitir nada. Si falla el guardado no queda una ocurrencia que
  * dice tener una foto que no está; si falla la emisión queda un blob huérfano en OPFS, que es
  * el fallo barato de los dos. */
 export async function anotar(a: Anotacion): Promise<string> {
   const medio = a.foto ? await guardar(a.foto) : null;
   const metadatos = a.foto ? await exif.leer(a.foto) : null;
+  const sonido = a.sonido ? await guardar(a.sonido.blob) : null;
   const ocurrencia = nuevoId();
   await emitir('ocurrencia.registrada', ocurrencia, {
     'dwc:eventID': a.salidaId,
@@ -174,6 +182,21 @@ export async function anotar(a: Anotacion): Promise<string> {
       // se puede anotar con una foto de hace un rato, y la que vale es la primera.
       'dcterms:created': metadatos?.disparadaEn ?? new Date().toISOString(),
       ...(metadatos ? { 'cdc:exif': metadatos.campos } : {}),
+    });
+  }
+  if (sonido && a.sonido) {
+    await emitir('medio.adjuntado', nuevoId(), {
+      'dwc:occurrenceID': ocurrencia,
+      'dc:type': 'Sound',
+      'dcterms:format': sonido.formato,
+      'cdc:hashSha256': sonido.hash,
+      'cdc:bytes': sonido.bytes,
+      'cdc:rutaLocal': `medios/${sonido.hash}`,
+      'dcterms:created': a.sonido.empezadaEn,
+      // No es EXIF, pero es lo mismo: lo que el sensor dice de sí mismo. Aquí, la frecuencia
+      // de muestreo y si el navegador aplicó o no supresión de ruido y ganancia automática,
+      // que cambian lo que BirdNET va a oír.
+      'cdc:exif': a.sonido.ajustes,
     });
   }
   return ocurrencia;
@@ -235,6 +258,73 @@ export async function fijarSensibilidad(
   });
 }
 
+// --- Identificación -------------------------------------------------------------------
+
+export interface Taxon {
+  readonly key: number;
+  readonly nombre: string;
+  readonly rango: string;
+  readonly vernaculoEs?: string;
+  readonly vernaculoEn?: string;
+}
+
+export interface Determinacion {
+  readonly ocurrenciaId: string;
+  /** Lo que el observador escribió, tal cual. Si eligió un taxón del árbol, es su nombre. */
+  readonly nombre: string;
+  /** El taxón del árbol local de GBIF, si lo eligió. Sin él, la hipótesis queda sin resolver y
+   * `taxon.resuelto` llegará más tarde, del trabajador con red. */
+  readonly taxon?: Taxon;
+  readonly versionArbol?: string;
+  /** «cf.», «aff.»… */
+  readonly calificador?: string;
+  readonly observaciones?: string;
+  /** Proponer y aceptar de una vez, que es lo normal cuando el que identifica es el que mira. */
+  readonly aceptar: boolean;
+}
+
+/** Una determinación humana es una hipótesis más (restricción 3): entra por el mismo suceso
+ * que las de un modelo, con `identifiedBy` = el observador y sin versión de modelo. Aceptarla
+ * es otro suceso, y el pliegue se encarga de que solo una esté aceptada a la vez (§15.7). */
+export async function proponerIdentificacion(
+  observador: string,
+  d: Determinacion,
+): Promise<string> {
+  const id = nuevoId();
+  await emitir('identificacion.propuesta', id, {
+    'dwc:occurrenceID': d.ocurrenciaId,
+    'dwc:verbatimIdentification': d.nombre,
+    'dwc:identifiedBy': observador,
+    'dwc:dateIdentified': isoLocal(),
+    ...(d.taxon
+      ? {
+          'dwc:scientificName': d.taxon.nombre,
+          'dwc:taxonRank': d.taxon.rango,
+          'dwc:taxonID': `https://www.gbif.org/species/${d.taxon.key}`,
+          'cdc:gbifTaxonKey': d.taxon.key,
+          ...(d.versionArbol ? { 'cdc:versionArbolGbif': d.versionArbol } : {}),
+        }
+      : {}),
+    ...(d.calificador ? { 'dwc:identificationQualifier': d.calificador } : {}),
+    ...(d.observaciones ? { 'dwc:identificationRemarks': d.observaciones } : {}),
+  });
+  if (d.aceptar) await emitir('identificacion.aceptada', id, {});
+  return id;
+}
+
+export async function aceptarIdentificacion(identificacionId: string): Promise<void> {
+  await emitir('identificacion.aceptada', identificacionId, {});
+}
+
+export async function rechazarIdentificacion(
+  identificacionId: string,
+  motivo?: string,
+): Promise<void> {
+  await emitir('identificacion.rechazada', identificacionId, {
+    ...(motivo ? { 'dwc:identificationRemarks': motivo } : {}),
+  });
+}
+
 // --- Lecturas -------------------------------------------------------------------------
 
 export interface Cuaderno {
@@ -262,6 +352,27 @@ export interface Nota {
   readonly escritaEn?: string;
 }
 
+export type EstadoIdentificacion = 'unverified' | 'accepted' | 'rejected';
+
+export interface Identificacion {
+  readonly id: string;
+  /** `dwc:verbatimIdentification`: la etiqueta del modelo o lo que escribió la persona. */
+  readonly literal: string;
+  /** El nombre resuelto contra GBIF, si lo está. */
+  readonly cientifico?: string;
+  readonly rango?: string;
+  readonly gbifKey?: number;
+  readonly por: string;
+  /** Presente solo en las hipótesis de un modelo. Es la versión de los pesos. */
+  readonly modeloVersion?: string;
+  readonly confianza?: number;
+  readonly topK?: readonly { etiqueta: string; confianza: number }[];
+  readonly fecha?: string;
+  readonly estado: EstadoIdentificacion;
+  readonly calificador?: string;
+  readonly observaciones?: string;
+}
+
 export interface Observacion {
   readonly id: string;
   readonly latitud: number;
@@ -274,6 +385,11 @@ export interface Observacion {
   readonly motivoRetractacion?: string;
   readonly sensibilidad: Sensibilidad;
   readonly fotos: readonly string[];
+  readonly sonidos: readonly string[];
+  /** Todas las hipótesis, de modelos y de personas, en orden de fecha. */
+  readonly identificaciones: readonly Identificacion[];
+  /** La aceptada, si la hay. Como máximo una: lo garantiza el pliegue. */
+  readonly determinacion?: Identificacion;
 }
 
 export interface EstadoCampo {
@@ -350,26 +466,57 @@ export async function estado(verSalida?: string): Promise<EstadoCampo> {
   const medios = (await almacen.filas('proy_medio')).filter(
     (f) => mias(f) && !f['cdc:desadjuntado'],
   );
-  const fotosDe = (ocurrencia: string) =>
+  const mediosDe = (ocurrencia: string, tipo: 'StillImage' | 'Sound') =>
     medios
-      .filter((f) => f['dwc:occurrenceID'] === ocurrencia && f['dc:type'] === 'StillImage')
+      .filter((f) => f['dwc:occurrenceID'] === ocurrencia && f['dc:type'] === tipo)
       .map((f) => String(f['cdc:hashSha256']));
+
+  const hipotesis = (await almacen.filas('proy_identificacion')).filter(mias);
+  const identificacionesDe = (ocurrencia: string): Identificacion[] =>
+    hipotesis
+      .filter((f) => f['dwc:occurrenceID'] === ocurrencia)
+      .map((f) => ({
+        id: String(f['dwc:identificationID']),
+        literal: String(f['dwc:verbatimIdentification']),
+        cientifico: texto(f, 'dwc:scientificName'),
+        rango: texto(f, 'dwc:taxonRank'),
+        gbifKey: numero(f, 'cdc:gbifTaxonKey'),
+        por: String(f['dwc:identifiedBy']),
+        modeloVersion: texto(f, 'cdc:modeloVersion'),
+        confianza: numero(f, 'cdc:confianza'),
+        topK: Array.isArray(f['cdc:topK'])
+          ? (f['cdc:topK'] as { etiqueta: string; confianza: number }[])
+          : undefined,
+        fecha: texto(f, 'dwc:dateIdentified'),
+        estado: (texto(f, 'dwc:identificationVerificationStatus') ??
+          'unverified') as EstadoIdentificacion,
+        calificador: texto(f, 'dwc:identificationQualifier'),
+        observaciones: texto(f, 'dwc:identificationRemarks'),
+      }))
+      .sort((a, b) => (a.fecha ?? '').localeCompare(b.fecha ?? ''));
 
   const observaciones = ocurrencias
     .filter((f) => f['dwc:eventID'] === salida.id)
-    .map((f) => ({
-      id: String(f['dwc:occurrenceID']),
-      latitud: Number(f['dwc:decimalLatitude']),
-      longitud: Number(f['dwc:decimalLongitude']),
-      precisionM: Number(f['dwc:coordinateUncertaintyInMeters']),
-      capturadoEn: texto(f, 'cdc:capturadoEn'),
-      comentario: texto(f, 'dwc:occurrenceRemarks'),
-      cuantos: numero(f, 'dwc:individualCount'),
-      retractada: Boolean(f['cdc:retractada']),
-      motivoRetractacion: texto(f, 'cdc:motivoRetractacion'),
-      sensibilidad: (texto(f, 'cdc:politicaSensibilidad') ?? 'publico') as Sensibilidad,
-      fotos: fotosDe(String(f['dwc:occurrenceID'])),
-    }))
+    .map((f) => {
+      const ocurrenciaId = String(f['dwc:occurrenceID']);
+      const identificaciones = identificacionesDe(ocurrenciaId);
+      return {
+        id: ocurrenciaId,
+        latitud: Number(f['dwc:decimalLatitude']),
+        longitud: Number(f['dwc:decimalLongitude']),
+        precisionM: Number(f['dwc:coordinateUncertaintyInMeters']),
+        capturadoEn: texto(f, 'cdc:capturadoEn'),
+        comentario: texto(f, 'dwc:occurrenceRemarks'),
+        cuantos: numero(f, 'dwc:individualCount'),
+        retractada: Boolean(f['cdc:retractada']),
+        motivoRetractacion: texto(f, 'cdc:motivoRetractacion'),
+        sensibilidad: (texto(f, 'cdc:politicaSensibilidad') ?? 'publico') as Sensibilidad,
+        fotos: mediosDe(ocurrenciaId, 'StillImage'),
+        sonidos: mediosDe(ocurrenciaId, 'Sound'),
+        identificaciones,
+        determinacion: identificaciones.find((i) => i.estado === 'accepted'),
+      };
+    })
     .sort((a, b) => (a.capturadoEn ?? '').localeCompare(b.capturadoEn ?? ''));
 
   // La hora de cada nota sale de su suceso. Es una pasada por el registro entero, que en un

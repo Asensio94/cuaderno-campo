@@ -6,3 +6,7 @@ __pycache__/
 # Claves y cuotas: Pl@ntNet y lo que venga detras van en el entorno, nunca aqui.
 .env
 .env.*
+
+# Entornos de Python de los trabajadores (birdnet-analyzer arrastra TensorFlow: no se versiona).
+.venv/
+trabajadores/*/.venv/

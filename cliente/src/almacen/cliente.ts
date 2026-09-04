@@ -11,6 +11,7 @@ import type { Peticion, Respuesta } from './worker.ts';
 import type { Informe } from '../../../nucleo/registro-ts/almacen.ts';
 import type { Fila, Proyeccion } from '../../../nucleo/registro-ts/pliegue.ts';
 import type { Suceso } from '../../../nucleo/registro-ts/suceso.ts';
+import type { ConsultaSerie, PuntoSerie, Taxon } from '../../../nucleo/registro-ts/taxones.ts';
 
 export class ErrorAlmacenRemoto extends Error {}
 
@@ -37,6 +38,11 @@ export interface AlmacenRemoto {
   cursor(dispositivoId: string): Promise<number>;
   desde(dispositivoId: string, seq: number, limite?: number): Promise<Suceso[]>;
   dispositivos(): Promise<string[]>;
+  /** El árbol local de taxones y las series (nucleo/registro-ts/taxones.ts). */
+  versionTaxones(): Promise<string | null>;
+  cargarTaxones(tsv: string, version: string): Promise<number>;
+  buscarTaxones(texto: string, limite?: number): Promise<Taxon[]>;
+  serie(consulta: ConsultaSerie): Promise<PuntoSerie[]>;
 }
 
 export function conectar(nombre: string): AlmacenRemoto {
@@ -90,6 +96,10 @@ export function conectar(nombre: string): AlmacenRemoto {
     cursor: (dispositivoId) => llamar('cursor', dispositivoId),
     desde: (dispositivoId, seq, limite) => llamar('desde', dispositivoId, seq, limite),
     dispositivos: () => llamar('dispositivos'),
+    versionTaxones: () => llamar('versionTaxones'),
+    cargarTaxones: (tsv, version) => llamar('cargarTaxones', tsv, version),
+    buscarTaxones: (texto, limite) => llamar('buscarTaxones', texto, limite),
+    serie: (consulta) => llamar('serie', consulta),
   };
 }
 

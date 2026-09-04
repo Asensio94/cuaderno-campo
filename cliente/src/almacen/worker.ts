@@ -22,6 +22,14 @@ import { Almacen } from '../../../nucleo/registro-ts/almacen.ts';
 import type { Escritor } from '../../../nucleo/registro-ts/escritor.ts';
 import { abrirWaSqlite } from '../../../nucleo/registro-ts/sqlite-wa.ts';
 import type { Suceso } from '../../../nucleo/registro-ts/suceso.ts';
+import {
+  ESQUEMA_TAXON,
+  buscarTaxones,
+  cargarTaxones,
+  serie,
+  versionTaxones,
+} from '../../../nucleo/registro-ts/taxones.ts';
+import type { ConsultaSerie } from '../../../nucleo/registro-ts/taxones.ts';
 
 export interface Peticion {
   readonly id: number;
@@ -92,7 +100,10 @@ async function abrirAlmacen(): Promise<Almacen> {
       // `synchronous = FULL` sí, por lo de siempre: es un teléfono y se queda sin batería.
       pragmas: ['PRAGMA synchronous = FULL'],
     });
-    return Almacen.abrir(bd);
+    const a = await Almacen.abrir(bd);
+    // El árbol de taxones es dato derivado y va fuera del esquema del registro (taxones.ts).
+    await bd.ejecutar(ESQUEMA_TAXON);
+    return a;
   })();
 }
 
@@ -120,6 +131,13 @@ const METODOS: Record<string, (a: Almacen, args: readonly unknown[]) => Promise<
       sujeto as string,
       carga as Record<string, unknown>,
     ),
+  // El árbol de taxones y las series (taxones.ts). Van por el mismo trabajador porque la base es
+  // la misma y `AccessHandlePoolVFS` no admite una segunda conexión.
+  versionTaxones: (a) => versionTaxones(a.bd),
+  cargarTaxones: (a, [tsv, version]) => cargarTaxones(a.bd, tsv as string, version as string),
+  buscarTaxones: (a, [texto, limite]) =>
+    buscarTaxones(a.bd, texto as string, limite as number | undefined),
+  serie: (a, [consulta]) => serie(a.bd, consulta as ConsultaSerie),
 };
 
 /** Las peticiones se atienden de una en una.

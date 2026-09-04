@@ -46,9 +46,10 @@ export default defineConfig({
           },
         ],
       },
-      // El .wasm de SQLite tiene que estar en la caché o la aplicación no abre sin cobertura,
+      // El .wasm de SQLite y el .tsv del árbol de Aves tienen que estar en la caché o la aplicación
+      // no abre —ni identifica— sin cobertura,
       // que es el caso normal en el Pas.
-      workbox: { globPatterns: ['**/*.{js,css,html,wasm,svg,woff2,png}'] },
+      workbox: { globPatterns: ['**/*.{js,css,html,wasm,svg,woff2,png,tsv,json}'] },
     }),
   ],
 });

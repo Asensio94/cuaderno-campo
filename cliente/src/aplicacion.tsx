@@ -6,11 +6,14 @@
 // red; y ninguna confirmación del navegador (`prompt`, `confirm`), que en Android salen a medio
 // tamaño y a veces detrás del teclado. Lo que hay que confirmar se confirma en la propia pantalla.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { esOtraPestana } from './almacen/cliente.ts';
+import { grabar, hayMicrofono } from './audio.ts';
+import type { Grabacion, Grabadora } from './audio.ts';
 import {
   SENSIBILIDADES,
+  aceptarIdentificacion,
   anotar,
   anotarNota,
   asegurarPersistencia,
@@ -21,14 +24,18 @@ import {
   estado,
   fijarSensibilidad,
   iniciarSalida,
+  proponerIdentificacion,
+  rechazarIdentificacion,
   retractarOcurrencia,
 } from './campo.ts';
-import type { EstadoCampo, Nota, Observacion, Sensibilidad } from './campo.ts';
+import type { EstadoCampo, Identificacion, Nota, Observacion, Sensibilidad } from './campo.ts';
 import { edadSegundos, useGps } from './gps.ts';
 import type { EstadoGps } from './gps.ts';
 import { useInstalacion } from './instalar.ts';
 import type { Instalacion } from './instalar.ts';
 import { urlDe } from './medios.ts';
+import { asegurarTaxones, buscarTaxones, versionArbol } from './taxones.ts';
+import type { Taxon } from './taxones.ts';
 
 // --- Piezas sueltas ---------------------------------------------------------------------
 
@@ -48,6 +55,9 @@ const TRAZOS = {
   lapiz: 'M4 20l4-1L19 8l-3-3L5 16z M14 7l3 3',
   tachar: 'M4 12h16 M8 6h8 M8 18h8',
   candado: 'M6 11h12v9H6z M9 11V8a3 3 0 0 1 6 0v3',
+  micro: 'M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z M6 11a6 6 0 0 0 12 0 M12 17v4 M9 21h6',
+  parar: 'M7 7h10v10H7z',
+  etiqueta: 'M3 12l9-9h9v9l-9 9z M16.5 7.5v.01',
 } as const;
 
 function Icono({ n, tam = 22 }: { n: keyof typeof TRAZOS; tam?: number }) {
@@ -167,7 +177,8 @@ function Gps({ gps, grande = false }: { gps: EstadoGps; grande?: boolean }) {
   );
 }
 
-function Miniatura({ hash, grande = false }: { hash: string; grande?: boolean }) {
+/** Una URL de objeto para un medio de OPFS, revocada al desmontar o al cambiar de hash. */
+function useUrlMedio(hash: string): string | null {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     let vivo = true;
@@ -185,8 +196,380 @@ function Miniatura({ hash, grande = false }: { hash: string; grande?: boolean })
       if (actual) URL.revokeObjectURL(actual);
     };
   }, [hash]);
+  return url;
+}
+
+function Miniatura({ hash, grande = false }: { hash: string; grande?: boolean }) {
+  const url = useUrlMedio(hash);
   const clase = grande ? 'foto grande' : 'foto';
   return url ? <img className={clase} src={url} alt="" /> : <span className={`${clase} vacia`} />;
+}
+
+function Sonido({ hash }: { hash: string }) {
+  const url = useUrlMedio(hash);
+  return url ? <audio controls preload="metadata" src={url} /> : null;
+}
+
+const mmss = (s: number) =>
+  `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+/** Grabar un sonido en la hoja de observación: parado, grabando o hecho. La grabación no se
+ * guarda hasta que se guarda la observación; si se cierra la hoja, se pierde, como la foto. */
+function Grabador({
+  sonido,
+  cambiar,
+}: {
+  sonido: Grabacion | null;
+  cambiar: (g: Grabacion | null) => void;
+}) {
+  const grabadora = useRef<Grabadora | null>(null);
+  const [grabando, setGrabando] = useState(false);
+  const [segundos, setSegundos] = useState(0);
+  const [nivel, setNivel] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!grabando) return;
+    const t = setInterval(() => {
+      setSegundos(grabadora.current?.segundos() ?? 0);
+      setNivel(grabadora.current?.nivel() ?? 0);
+    }, 200);
+    return () => clearInterval(t);
+  }, [grabando]);
+
+  useEffect(() => {
+    if (!sonido) {
+      setUrl(null);
+      return;
+    }
+    const u = URL.createObjectURL(sonido.blob);
+    setUrl(u);
+    return () => URL.revokeObjectURL(u);
+  }, [sonido]);
+
+  // Si la hoja se cierra a media grabación, hay que soltar el micrófono.
+  useEffect(
+    () => () => {
+      void grabadora.current?.descartar();
+      grabadora.current = null;
+    },
+    [],
+  );
+
+  const parar = async () => {
+    const g = grabadora.current;
+    if (!g) return;
+    grabadora.current = null;
+    setGrabando(false);
+    try {
+      cambiar(await g.parar());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const empezar = async () => {
+    setError(null);
+    try {
+      const g = await grabar(() => void parar());
+      grabadora.current = g;
+      setSegundos(0);
+      setGrabando(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  if (!hayMicrofono()) return null;
+
+  return (
+    <div className="grabador">
+      {grabando ? (
+        <div className="grabando">
+          <span className="punto" />
+          <span className="tiempo">{mmss(segundos)}</span>
+          <span className="nivel">
+            <span style={{ width: `${Math.min(100, Math.round(nivel * 300))}%` }} />
+          </span>
+          <button type="button" className="secundario compacto" onClick={() => void parar()}>
+            <Icono n="parar" tam={18} />
+            Parar
+          </button>
+        </div>
+      ) : sonido ? (
+        <div className="hecho">
+          {url && <audio controls preload="metadata" src={url} />}
+          <button
+            type="button"
+            className="icono"
+            onClick={() => cambiar(null)}
+            aria-label="Quitar el sonido"
+          >
+            <Icono n="cerrar" tam={18} />
+          </button>
+        </div>
+      ) : (
+        <button type="button" className="secundario" onClick={() => void empezar()}>
+          <Icono n="micro" tam={20} />
+          Grabar sonido
+        </button>
+      )}
+      {error !== null && <Aviso tono="mal">{error}</Aviso>}
+    </div>
+  );
+}
+
+/** Lo que el observador dice que es: un taxón del árbol local, o texto libre si no lo encuentra.
+ * El nombre es siempre lo escrito o elegido; el taxón, solo cuando se eligió de la lista. */
+interface Eleccion {
+  readonly nombre: string;
+  readonly taxon?: Taxon;
+}
+
+function BuscadorTaxon({
+  valor,
+  cambiar,
+  autoFocus = false,
+}: {
+  valor: Eleccion | null;
+  cambiar: (e: Eleccion | null) => void;
+  autoFocus?: boolean;
+}) {
+  const [texto, setTexto] = useState(valor?.nombre ?? '');
+  const [sugerencias, setSugerencias] = useState<Taxon[]>([]);
+  const [abierto, setAbierto] = useState(false);
+  // La primera carga del árbol en SQLite tarda unos segundos; mientras, «no está en el árbol»
+  // sería mentira.
+  const [listo, setListo] = useState(false);
+  useEffect(() => {
+    let vivo = true;
+    void asegurarTaxones().then(
+      () => {
+        if (vivo) setListo(true);
+      },
+      () => {
+        if (vivo) setListo(true);
+      },
+    );
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (valor?.taxon || texto.trim().length < 2) {
+      setSugerencias([]);
+      return;
+    }
+    let vivo = true;
+    const t = setTimeout(() => {
+      void buscarTaxones(texto).then(
+        (r) => {
+          if (vivo) setSugerencias(r);
+        },
+        () => {
+          if (vivo) setSugerencias([]);
+        },
+      );
+    }, 120);
+    return () => {
+      vivo = false;
+      clearTimeout(t);
+    };
+  }, [texto, valor?.taxon]);
+
+  const elegir = (t: Taxon) => {
+    setTexto(t.nombre);
+    setAbierto(false);
+    cambiar({ nombre: t.nombre, taxon: t });
+  };
+
+  return (
+    <div className="buscador">
+      <input
+        value={texto}
+        onChange={(e) => {
+          const v = e.target.value;
+          setTexto(v);
+          setAbierto(true);
+          cambiar(v.trim() ? { nombre: v.trim() } : null);
+        }}
+        onFocus={() => setAbierto(true)}
+        placeholder="Mirlo acuático, Cinclus, petirrojo…"
+        autoComplete="off"
+        autoCorrect="off"
+        spellCheck={false}
+        autoFocus={autoFocus}
+        aria-label="Qué es"
+      />
+      {valor?.taxon && (
+        <p className="elegido">
+          <Icono n="ok" tam={16} />
+          <i>{valor.taxon.nombre}</i>
+          {valor.taxon.vernaculoEs && <span className="tenue">{valor.taxon.vernaculoEs}</span>}
+          {valor.taxon.rango !== 'species' && <span className="etiqueta">{valor.taxon.rango}</span>}
+        </p>
+      )}
+      {abierto && !valor?.taxon && sugerencias.length > 0 && (
+        <ul className="sugerencias" role="listbox">
+          {sugerencias.map((t) => (
+            <li key={t.key} role="option" aria-selected={false}>
+              <button type="button" onClick={() => elegir(t)}>
+                <span>
+                  <i>{t.nombre}</i>
+                  {t.rango !== 'species' && <span className="etiqueta">{t.rango}</span>}
+                </span>
+                {(t.vernaculoEs || t.vernaculoEn) && (
+                  <span className="tenue">{t.vernaculoEs ?? t.vernaculoEn}</span>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {valor && !valor.taxon && texto.trim().length >= 2 && sugerencias.length === 0 && (
+        <small>
+          {listo
+            ? 'No está en el árbol de Aves local. Se guarda tal cual, sin resolver; queda como hipótesis sin taxón hasta que alguien la resuelva.'
+            : 'Cargando el árbol de Aves…'}
+        </small>
+      )}
+    </div>
+  );
+}
+
+const porcentaje = (x?: number) => (x === undefined ? '' : `${Math.round(x * 100)} %`);
+
+/** Las hipótesis de una observación, de modelos y de personas, con aceptar y rechazar; y la
+ * entrada de una determinación nueva. La confianza del modelo se muestra tal cual (ADR §1.6). */
+function Hipotesis({
+  o,
+  observador,
+  hecho,
+}: {
+  o: Observacion;
+  observador: string;
+  hecho: () => void;
+}) {
+  const [nueva, setNueva] = useState(false);
+  const [eleccion, setEleccion] = useState<Eleccion | null>(null);
+  const [ocupado, setOcupado] = useState(false);
+
+  const correr = (p: Promise<unknown>) => {
+    setOcupado(true);
+    void p.then(
+      () => {
+        setOcupado(false);
+        setNueva(false);
+        setEleccion(null);
+        hecho();
+      },
+      () => setOcupado(false),
+    );
+  };
+
+  const determinar = () => {
+    if (!eleccion) return;
+    correr(
+      proponerIdentificacion(observador, {
+        ocurrenciaId: o.id,
+        nombre: eleccion.nombre,
+        taxon: eleccion.taxon,
+        versionArbol: eleccion.taxon ? versionArbol() : undefined,
+        aceptar: true,
+      }),
+    );
+  };
+
+  const quien = (i: Identificacion) =>
+    i.modeloVersion ? `${i.por} ${i.modeloVersion} · ${porcentaje(i.confianza)}` : i.por;
+
+  return (
+    <section className="hipotesis">
+      <div className="campo">
+        <span>Identificación</span>
+        {o.identificaciones.length === 0 && !nueva && (
+          <p className="tenue">Sin determinar. Sale como «unidentified» en la exportación.</p>
+        )}
+        {o.identificaciones.length > 0 && (
+          <ul>
+            {o.identificaciones.map((i) => (
+              <li key={i.id} className={`hipotesis-fila ${i.estado}`}>
+                <span className="hipotesis-texto">
+                  <strong>
+                    {i.calificador && `${i.calificador} `}
+                    <i>{i.cientifico ?? i.literal}</i>
+                  </strong>
+                  {i.cientifico && i.literal !== i.cientifico && (
+                    <span className="tenue">{i.literal}</span>
+                  )}
+                  <span className="tenue menudo">{quien(i)}</span>
+                </span>
+                {i.estado === 'rejected' ? (
+                  <span className="etiqueta mal">Rechazada</span>
+                ) : (
+                  <span className="botones compactos">
+                    {i.estado === 'accepted' && <span className="etiqueta bien">Aceptada</span>}
+                    <button
+                      type="button"
+                      className="icono"
+                      disabled={ocupado || o.retractada}
+                      onClick={() => correr(rechazarIdentificacion(i.id))}
+                      aria-label="Rechazar"
+                    >
+                      <Icono n="cerrar" tam={18} />
+                    </button>
+                    {i.estado !== 'accepted' && (
+                      <button
+                        type="button"
+                        className="icono"
+                        disabled={ocupado || o.retractada}
+                        onClick={() => correr(aceptarIdentificacion(i.id))}
+                        aria-label="Aceptar"
+                      >
+                        <Icono n="ok" tam={18} />
+                      </button>
+                    )}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        {nueva ? (
+          <>
+            <BuscadorTaxon valor={eleccion} cambiar={setEleccion} autoFocus />
+            <div className="botones">
+              <button type="button" className="secundario" onClick={() => setNueva(false)}>
+                Volver
+              </button>
+              <button
+                type="button"
+                className="primario"
+                disabled={!eleccion || ocupado}
+                onClick={determinar}
+              >
+                <Icono n="etiqueta" tam={18} />
+                Determinar
+              </button>
+            </div>
+          </>
+        ) : (
+          !o.retractada && (
+            <button
+              type="button"
+              className="secundario compacto"
+              onClick={() => setNueva(true)}
+            >
+              <Icono n="etiqueta" tam={18} />
+              {o.determinacion ? 'Otra determinación' : 'Determinar'}
+            </button>
+          )
+        )}
+      </div>
+    </section>
+  );
 }
 
 function Aviso({ tono, children }: { tono: 'mal' | 'flojo'; children: React.ReactNode }) {
@@ -476,11 +859,33 @@ function TarjetaObservacion({
               {ETIQUETA[o.sensibilidad]}
             </span>
           )}
+          {o.sonidos.length > 0 && (
+            <span className="etiqueta">
+              <Icono n="micro" tam={13} />
+              Sonido
+            </span>
+          )}
           {o.retractada && <span className="etiqueta mal">Retractada</span>}
         </span>
-        <span className={`que ${o.comentario ? '' : 'tenue'}`}>
-          {o.comentario || 'Sin comentario'}
-        </span>
+        {o.determinacion ? (
+          <>
+            <span className="que nombre">
+              <i>{o.determinacion.cientifico ?? o.determinacion.literal}</i>
+            </span>
+            {o.comentario && <span className="que tenue">{o.comentario}</span>}
+          </>
+        ) : (
+          <>
+            <span className={`que ${o.comentario ? '' : 'tenue'}`}>
+              {o.comentario || 'Sin comentario'}
+            </span>
+            {o.identificaciones.length > 0 && (
+              <span className="que tenue">
+                {plural(o.identificaciones.length, 'hipótesis sin aceptar', 'hipótesis sin aceptar')}
+              </span>
+            )}
+          </>
+        )}
         {o.fotos.length > 0 && (
           <span className="fotos">
             {o.fotos.map((h) => (
@@ -640,9 +1045,11 @@ function HojaObservacion({
   hecho: () => void;
   cancelar: () => void;
 }) {
+  const [eleccion, setEleccion] = useState<Eleccion | null>(null);
   const [comentario, setComentario] = useState('');
   const [cuantos, setCuantos] = useState<number | null>(null);
   const [foto, setFoto] = useState<File | null>(null);
+  const [sonido, setSonido] = useState<Grabacion | null>(null);
   const [vista, setVista] = useState<string | null>(null);
   const [sensibilidad, setSensibilidad] = useState<Sensibilidad>('publico');
   const [guardando, setGuardando] = useState(false);
@@ -671,8 +1078,24 @@ function HojaObservacion({
       comentario: comentario.trim() || undefined,
       cuantos: cuantos ?? undefined,
       foto: foto ?? undefined,
+      sonido: sonido
+        ? { blob: sonido.blob, empezadaEn: sonido.empezadaEn, ajustes: sonido.ajustes }
+        : undefined,
     })
-      .then((id) => (sensibilidad === 'publico' ? undefined : fijarSensibilidad(id, sensibilidad)))
+      .then(async (id) => {
+        // La determinación del observador es una hipótesis aceptada de una vez: quien mira es
+        // quien identifica. Si no eligió del árbol, va sin taxón, literal.
+        if (eleccion) {
+          await proponerIdentificacion(observador, {
+            ocurrenciaId: id,
+            nombre: eleccion.nombre,
+            taxon: eleccion.taxon,
+            versionArbol: eleccion.taxon ? versionArbol() : undefined,
+            aceptar: true,
+          });
+        }
+        if (sensibilidad !== 'publico') await fijarSensibilidad(id, sensibilidad);
+      })
       .then(hecho, (e: unknown) => {
         setGuardando(false);
         setError(e instanceof Error ? e.message : String(e));
@@ -706,16 +1129,22 @@ function HojaObservacion({
     >
       <Gps gps={gps} grande />
 
+      <div className="campo">
+        <span>Qué es</span>
+        <BuscadorTaxon valor={eleccion} cambiar={setEleccion} autoFocus />
+      </div>
+
       <label>
         <span>Qué ves</span>
         <textarea
           value={comentario}
           onChange={(e) => setComentario(e.target.value)}
-          rows={3}
-          placeholder="Mirlo acuático bajo el puente…"
-          autoFocus
+          rows={2}
+          placeholder="Bajo el puente, cantando…"
         />
       </label>
+
+      <Grabador sonido={sonido} cambiar={setSonido} />
 
       <div className="dos">
         <div className="campo">
@@ -801,7 +1230,22 @@ function HojaNota({
 
 // --- Hoja: detalle de una observación ---------------------------------------------------
 
-function Detalle({ o, hecho, cerrar }: { o: Observacion; hecho: () => void; cerrar: () => void }) {
+function Detalle({
+  o,
+  observador,
+  hecho,
+  refrescar,
+  cerrar,
+}: {
+  o: Observacion;
+  observador: string;
+  /** Tras una corrección o una retractación: se vuelve a la salida. */
+  hecho: () => void;
+  /** Tras aceptar, rechazar o proponer una hipótesis: se recarga y se sigue aquí, que es donde
+   * se están mirando las hipótesis. */
+  refrescar: () => void;
+  cerrar: () => void;
+}) {
   const [comentario, setComentario] = useState(o.comentario ?? '');
   const [cuantos, setCuantos] = useState<number | null>(o.cuantos ?? null);
   const [sensibilidad, setSensibilidad] = useState<Sensibilidad>(o.sensibilidad);
@@ -889,6 +1333,14 @@ function Detalle({ o, hecho, cerrar }: { o: Observacion; hecho: () => void; cerr
         </div>
       )}
 
+      {o.sonidos.length > 0 && (
+        <div className="sonidos">
+          {o.sonidos.map((h) => (
+            <Sonido key={h} hash={h} />
+          ))}
+        </div>
+      )}
+
       <div className="datos">
         <div>
           <span className="tenue">Posición</span>
@@ -901,6 +1353,8 @@ function Detalle({ o, hecho, cerrar }: { o: Observacion; hecho: () => void; cerr
           <code>±{o.precisionM.toFixed(0)} m</code>
         </div>
       </div>
+
+      <Hipotesis o={o} observador={observador} hecho={refrescar} />
 
       <fieldset disabled={o.retractada}>
         <label>
@@ -987,6 +1441,9 @@ export function Aplicacion() {
   useEffect(recargar, [recargar]);
   useEffect(() => {
     void asegurarPersistencia().then(setPersistente);
+    // El árbol de Aves se carga en SQLite la primera vez; que no sea al escribir la primera
+    // letra en el buscador. Si falla, el buscador lo reintenta él.
+    void asegurarTaxones().catch(() => undefined);
   }, []);
 
   // El GPS solo corre con una salida abierta: es lo que más batería gasta de todo esto, y con
@@ -1072,8 +1529,11 @@ export function Aplicacion() {
       )}
       {pantalla.tipo === 'detalle' && (
         <Detalle
-          o={pantalla.o}
+          // La observación fresca tras recargar; la de la pantalla es la foto de cuando se abrió.
+          o={campo.observaciones.find((x) => x.id === pantalla.o.id) ?? pantalla.o}
+          observador={campo.cuaderno.observador}
           hecho={alGuardar}
+          refrescar={recargar}
           cerrar={() => setPantalla({ tipo: 'salida' })}
         />
       )}
