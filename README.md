@@ -99,6 +99,10 @@ piezas:
   explotarse comercialmente. Documentado aquí como exige el encargo.
 - **Pl@ntNet** requiere clave de API con cuota, y su nivel gratuito es **no comercial**. La clave
   va en variables de entorno, **nunca en el repositorio**.
+- **OpenStreetMap y Protomaps**: los mosaicos del mapa salen del basemap de Protomaps, construido
+  desde datos de OSM bajo **ODbL**. La atribución no es decoración: va pintada en el mapa y viaja
+  dentro del propio fichero `.pmtiles`. No se descargan mosaicos en bloque de
+  `tile.openstreetmap.org`, que su política de uso prohíbe expresamente.
 - **GBIF**: la resolución de nombres usa su API pública. Conviene citar los conjuntos de datos y
   respetar sus condiciones al publicar.
 
@@ -134,6 +138,45 @@ que sale va sin EXIF, XMP ni IPTC. El EXIF local queda intacto.
 **Validación en GBIF, paso manual.** La API del validador responde 403 a las llamadas anónimas,
 así que las pruebas comprueban la estructura (columnas contra `meta.xml`, enlaces al núcleo) y el
 archivo se sube a mano a <https://www.gbif.org/tools/data-validator> antes de publicarlo.
+
+## El mapa, dentro del teléfono
+
+En el valle del Pas no hay cobertura, así que el mapa no se pide por la red: es un fichero que se
+mete una vez, en casa. El formato es **PMTiles** —un solo fichero leído por rangos de bytes, sin
+servidor de mosaicos— y vive en OPFS, al lado del cuaderno.
+
+El recorte se hace desde el planeta de Protomaps (construido desde OpenStreetMap, ODbL) sin
+descargarlo: `datos/mosaicos/extraer.py` lee el índice y los mosaicos que necesita por rangos, unas
+treinta peticiones sobre 137 GB publicados. Antes de bajar nada, el presupuesto:
+
+```bash
+python datos/mosaicos/extraer.py medir --zona pas
+```
+
+```bash
+python datos/mosaicos/extraer.py extraer --zona pas --salida datos/mosaicos/pas.pmtiles
+```
+
+Medido, no estimado (construcción `20260904`, zoom 0-14):
+
+| Ventana | Mosaicos | Tamaño |
+|---|---|---|
+| Valle del Pas | 2 351 | 14,4 MB |
+| Île-de-France | 19 918 | 121,2 MB |
+
+El fichero se mete desde la propia aplicación (hoja **Mapas**, dentro del mapa): o se elige del
+almacenamiento del teléfono, o se trae de una dirección, con la descarga reanudable a trozos de
+4 MB. La aplicación elige el archivo por su caja, así que con los dos dentro el cambio de valle no
+se pide. Y **los mosaicos son lo único que este programa borra**: son datos de terceros que se
+vuelven a traer, mientras que una foto de campo, no. Si la cuota aprieta, se ofrece borrar mapas y
+jamás observaciones.
+
+El mapa base **no lleva una sola etiqueta de texto**: los nombres exigirían glifos de una fuente
+empaquetados o servidos, y en el monte no hay servidor. Los únicos rótulos son los propios, los
+del cuaderno. El estilo son nueve capas escritas a mano (`cliente/src/mapa/estilo.ts`), en claro y
+en oscuro, con los caminos y el agua por delante de las carreteras, que es lo que se mira andando.
+
+Los ficheros `.pmtiles` no se versionan: se generan con el comando de arriba.
 
 ## Aves por el canto: el trabajador de BirdNET
 
@@ -173,7 +216,8 @@ de seguridad y restauración; exportación Darwin Core Archive con saneado de me
 de campo instalable; identificación de aves por canto con BirdNET en local.
 
 Hecho también: el trabajador de BirdNET, con las etiquetas clasificadas y su vuelta al teléfono
-por copia; y la pantalla de series, con su fenología por meses.
+por copia; la pantalla de series, con su fenología por meses; y el mapa sin conexión, con el
+recorte de mosaicos medido y su gestión de cuota.
 
-Pendiente: mapa sin conexión; validar un archivo real en gbif.org; una salida de verdad al Pas con
-audio y su análisis.
+Pendiente: conector de Pl@ntNet; validar un archivo real en gbif.org; una salida de verdad al Pas
+con audio y su análisis.

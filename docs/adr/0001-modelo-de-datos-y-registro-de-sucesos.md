@@ -583,9 +583,34 @@ tamaño, que hay que medir y no estimar.
   derivan de los mosaicos de terreno que ya descargas en `riesgo-tendidos-aves` y se empaquetan
   como capa independiente (sombreado o contornos). Fase 0 solo si sobra tiempo: la capa es
   independiente del resto.
-- **Presupuesto de tamaño: a medir en I2.** Dos ventanas de unos 100 × 100 km a zoom 14 en
-  vector deberían caber en decenas de MB cada una, pero eso se comprueba con el fichero
-  delante.
+- **Presupuesto de tamaño: medido, con el fichero delante.** El recorte lo hace
+  `datos/mosaicos/extraer.py`, que lee el planeta de Protomaps por rangos de bytes —137 GB
+  publicados, unas treinta peticiones leídas— y escribe un PMTiles regional sin descargarlo. El
+  subcomando `medir` da el presupuesto antes de bajar nada:
+
+  | Ventana | Caja | Zoom | Mosaicos | Tamaño |
+  |---|---|---|---|---|
+  | Valle del Pas | -4.25, 43.00 → -3.60, 43.50 | 0-14 | 2 351 | **14,4 MB** |
+  | Île-de-France | 1.45, 48.10 → 3.55, 49.25 | 0-14 | 19 918 | **121,2 MB** |
+
+  Es un orden de magnitud menos de lo estimado para el Pas y el doble de lo cómodo para
+  Île-de-France, que es urbana y a zoom 14 son casi todos edificios. Las dos entran en la cuota
+  de una PWA instalada con `persist()` concedido, y la de Île-de-France sigue siendo una
+  descarga que se hace en casa y una vez (construcción `20260904`).
+- **Ni una etiqueta de texto en el mapa base.** Cualquier capa de símbolos con `text-field`
+  exige glifos SDF servidos o empaquetados, y en el Pas no hay servidor. El estilo se escribe a
+  mano en `cliente/src/mapa/estilo.ts` —nueve capas, sin `@protomaps/basemaps`, que serían doce
+  estilos y una dependencia nueva (restricción 5)— y los únicos nombres que aparecen son los
+  míos, pintados en el DOM. Queda como decisión abierta: empaquetar dos PBF de glifos (unos
+  60 kB, fuente con licencia OFL) daría los topónimos, que en campo se echan de menos.
+- **Trampa de empaquetado, anotada porque no da error.** MapLibre deduce la URL de su worker de
+  `import.meta.url` y la busca al lado del módulo; con Vite el módulo se sirve preempaquetado
+  desde `.vite/deps/`, donde ese fichero no existe. El worker sale 404, MapLibre no lo
+  comprueba, y **todas** las baldosas se quedan en «loading» para siempre: lienzo del color del
+  fondo, consola limpia. Se arregla dándole la URL que emite Vite
+  (`maplibre-gl-worker.mjs?worker&url` + `setWorkerUrl`), que además entra en el precache del
+  trabajador de servicio y por tanto funciona en modo avión. Lo guarda
+  `pruebas/test_worker_mapa.py`.
 
 ---
 
@@ -661,7 +686,7 @@ cuaderno-campo/
 | I1 ✔ | Registro, HLC y pliegue en ambos lenguajes | P1-P4, aislamiento entre cuadernos (§4.6), conformidad entre lenguajes |
 | I2a ~ | Almacén SQLite y captura: nota, foto, GPS | convergencia de los tres caminos de proyección (§15.11) ✔ y una salida real en el Pas |
 | I2b ✔ | Audio: grabación WAV, cola de inferencia sin inferir | audio grabado y encolado, recuperado tras cerrar la aplicación |
-| I3 | Mapa offline: PMTiles en OPFS, descarga reanudable, política de cuota | presupuesto de tamaño medido, no estimado |
+| I3 ✔ | Mapa offline: PMTiles en OPFS, descarga reanudable, política de cuota | presupuesto medido con el fichero delante (§9): 14,4 MB el Pas, 121,2 MB Île-de-France ✔; el recorte releído por una implementación ajena (`pmtiles` de npm) y 22 pruebas del formato ✔; el mapa pintado en un navegador de verdad, con la observación, el arreglo del GPS y su error |
 | I4 ✔ | Consulta de series con subárbol local, por taxón y por sitio (§17) | series conocidas, clausura taxonómica y aislamiento entre cuadernos ✔; la pantalla, a mano sobre el cuaderno de pruebas |
 | I5 ✔ | Exportación DwC-A (§15.14) | estructura contra `meta.xml`, fuga de EXIF ✔; validador de GBIF, paso manual (403 a la API anónima) |
 | I7 ✔ | Copia de seguridad: ZIP con el registro y los medios (§15.12) | ida y vuelta entre lenguajes, restauración idempotente |
@@ -1350,6 +1375,15 @@ BirdNET sirven para saber dónde mirar, no para contar. Tres decisiones más:
     sincronizar, nunca al leer el cuaderno propio. Al lado de cada distancia va la incertidumbre
     del arreglo, que es lo que permite leer «a 40 m ±60 m» como lo que es: puede estar dentro o
     fuera del radio.
+
+*El mapa se lee, no se navega.* Sin rotación ni inclinación —con guantes se gira sin querer y
+luego no se sabe dónde está el norte—, dos botones de 52 px («centrar aquí» y «ver todo») y nada
+más encima del lienzo. Las observaciones son una capa de círculos y no marcadores del DOM: una
+salida de doscientas observaciones son doscientos nodos superpuestos al lienzo y va a tirones.
+La coordenada que se pinta es la real, con el radio del error del GPS dibujado alrededor;
+difuminar aquí lo que `cdc:politicaSensibilidad` difumina al exportar sería mentirle al propio
+cuaderno sobre dónde estaba el nido. Y el mapa que se abre lo elige la caja del archivo que
+contiene la posición, así que con los dos ficheros dentro el cambio de valle no se pide: pasa.
 
 Y una vista que no estaba en el guion pero que es lo que se le pide a un cuaderno de campo: la
 **fenología por meses**, doce columnas con la cuenta de cada mes sumando todos los años. Doce

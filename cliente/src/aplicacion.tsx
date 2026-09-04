@@ -7,7 +7,7 @@
 // red; y ninguna confirmación del navegador (`prompt`, `confirm`), que en Android salen a medio
 // tamaño y a veces detrás del teclado. Lo que hay que confirmar se confirma en la propia pantalla.
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { esOtraPestana } from './almacen/cliente.ts';
 import { grabar, hayMicrofono } from './audio.ts';
@@ -25,11 +25,19 @@ import {
   estado,
   fijarSensibilidad,
   iniciarSalida,
+  lugares,
   proponerIdentificacion,
   rechazarIdentificacion,
   retractarOcurrencia,
 } from './campo.ts';
-import type { EstadoCampo, Identificacion, Nota, Observacion, Sensibilidad } from './campo.ts';
+import type {
+  EstadoCampo,
+  Identificacion,
+  Lugar,
+  Nota,
+  Observacion,
+  Sensibilidad,
+} from './campo.ts';
 import { exportarCopia, importarCopia } from './copia.ts';
 import type { Restaurada } from './copia.ts';
 import { useGps } from './gps.ts';
@@ -51,6 +59,8 @@ import {
   porcentaje,
 } from './piezas.tsx';
 import type { Eleccion } from './piezas.tsx';
+import { PantallaMapa } from './pantalla-mapa.tsx';
+import type { PuntoMapa } from './pantalla-mapa.tsx';
 import { PantallaSeries } from './pantalla-series.tsx';
 import type { SemillaSerie } from './pantalla-series.tsx';
 import { asegurarTaxones, versionArbol } from './taxones.ts';
@@ -607,6 +617,7 @@ function Inicio({
   abrir,
   ver,
   series,
+  mapa,
   recargar,
 }: {
   campo: EstadoCampo;
@@ -614,6 +625,7 @@ function Inicio({
   abrir: () => void;
   ver: (id: string) => void;
   series: () => void;
+  mapa: () => void;
   recargar: () => void;
 }) {
   const [localidad, setLocalidad] = useState('');
@@ -685,6 +697,15 @@ function Inicio({
           <span className="etiqueta">Series</span>
           <strong>¿Qué he visto aquí, y cuándo?</strong>
           <span className="tenue">Un taxón, un radio y una ventana de tiempo</span>
+        </span>
+        <Icono n="flecha" />
+      </button>
+
+      <button type="button" className="tarjeta series" onClick={mapa}>
+        <span className="tarjeta-texto">
+          <span className="etiqueta">Mapa</span>
+          <strong>¿Dónde he estado?</strong>
+          <span className="tenue">Sin cobertura, con el mapa metido en el aparato</span>
         </span>
         <Icono n="flecha" />
       </button>
@@ -825,6 +846,7 @@ function PantallaSalida({
   nuevaObservacion,
   nuevaNota,
   abrirDetalle,
+  verMapa,
 }: {
   campo: EstadoCampo;
   gps: EstadoGps;
@@ -833,6 +855,7 @@ function PantallaSalida({
   nuevaObservacion: () => void;
   nuevaNota: () => void;
   abrirDetalle: (o: Observacion) => void;
+  verMapa: () => void;
 }) {
   const [cerrando, setCerrando] = useState(false);
   const salida = campo.salida;
@@ -853,6 +876,9 @@ function PantallaSalida({
             {abierta ? '' : ' · cerrada'}
           </span>
         </div>
+        <button type="button" className="icono" onClick={verMapa} aria-label="Ver en el mapa">
+          <Icono n="pin" />
+        </button>
       </header>
       {abierta && <Gps gps={gps} />}
 
@@ -1340,7 +1366,8 @@ type Pantalla =
       readonly semilla?: SemillaSerie;
       /** A dónde se vuelve al cerrar: se llega desde el inicio y desde una observación. */
       readonly volverA: 'inicio' | 'salida';
-    };
+    }
+  | { readonly tipo: 'mapa'; readonly volverA: 'inicio' | 'salida' };
 
 export function Aplicacion() {
   const [campo, setCampo] = useState<EstadoCampo | null>(null);
@@ -1377,9 +1404,12 @@ export function Aplicacion() {
   }, []);
 
   // El GPS solo corre con una salida abierta —es lo que más batería gasta de todo esto, y con el
-  // cuaderno cerrado no hay nada a lo que colgarle una posición— o mientras se consulta una
-  // serie centrada en «aquí», que sin posición no tiene centro.
-  const gps = useGps(campo?.abierta != null || pantalla.tipo === 'series');
+  // cuaderno cerrado no hay nada a lo que colgarle una posición—, mientras se consulta una serie
+  // centrada en «aquí», que sin posición no tiene centro, o con el mapa abierto, donde saber
+  // dónde estoy es justamente para lo que se abre.
+  const gps = useGps(
+    campo?.abierta != null || pantalla.tipo === 'series' || pantalla.tipo === 'mapa',
+  );
 
   if (fallo !== null) return <Atascado motivo={fallo} reintentar={recargar} />;
   if (campo === null) return <p className="cargando">Abriendo el cuaderno…</p>;
@@ -1389,6 +1419,28 @@ export function Aplicacion() {
   if (pantalla.tipo === 'auto') {
     setPantalla({ tipo: campo.abierta ? 'salida' : 'inicio' });
     return null;
+  }
+
+  if (pantalla.tipo === 'mapa') {
+    const volver = pantalla.volverA;
+    const cerrar = () => setPantalla({ tipo: volver });
+    return volver === 'salida' && campo.salida !== null ? (
+      <MapaDeSalida
+        campo={campo}
+        gps={gps}
+        cerrar={cerrar}
+        abrirDetalle={(o) => setPantalla({ tipo: 'detalle', o })}
+      />
+    ) : (
+      <MapaDelCuaderno
+        gps={gps}
+        cerrar={cerrar}
+        verSalida={(id) => {
+          setViendo(id);
+          setPantalla({ tipo: 'salida' });
+        }}
+      />
+    );
   }
 
   if (pantalla.tipo === 'series') {
@@ -1430,6 +1482,7 @@ export function Aplicacion() {
             setPantalla({ tipo: 'salida' });
           }}
           series={() => setPantalla({ tipo: 'series', volverA: 'inicio' })}
+          mapa={() => setPantalla({ tipo: 'mapa', volverA: 'inicio' })}
           recargar={recargar}
         />
       </>
@@ -1458,6 +1511,7 @@ export function Aplicacion() {
         nuevaObservacion={() => setPantalla({ tipo: 'observacion' })}
         nuevaNota={() => setPantalla({ tipo: 'nota' })}
         abrirDetalle={(o) => setPantalla({ tipo: 'detalle', o })}
+        verMapa={() => setPantalla({ tipo: 'mapa', volverA: 'salida' })}
       />
       {pantalla.tipo === 'observacion' && (
         <HojaObservacion
@@ -1487,5 +1541,102 @@ export function Aplicacion() {
         />
       )}
     </>
+  );
+}
+
+// --- Los dos mapas ----------------------------------------------------------------------
+//
+// El mapa es la misma pantalla con puntos distintos: dentro de una salida, sus observaciones;
+// desde el inicio, dónde ha estado el cuaderno. Se separan en dos envoltorios porque cada uno
+// consigue sus puntos de un sitio, y `PantallaMapa` no tiene que saber de cuál.
+
+function etiquetaDe(o: Observacion): string {
+  const d = o.determinacion;
+  if (d) return d.cientifico ?? d.literal;
+  const primera = o.identificaciones[0];
+  if (primera) return primera.cientifico ?? primera.literal;
+  return 'Sin identificar';
+}
+
+function MapaDeSalida({
+  campo,
+  gps,
+  cerrar,
+  abrirDetalle,
+}: {
+  campo: EstadoCampo;
+  gps: EstadoGps;
+  cerrar: () => void;
+  abrirDetalle: (o: Observacion) => void;
+}) {
+  const observaciones = campo.observaciones;
+  const puntos = useMemo<PuntoMapa[]>(
+    () =>
+      observaciones.map((o) => ({
+        id: o.id,
+        latitud: o.latitud,
+        longitud: o.longitud,
+        precisionM: o.precisionM,
+        etiqueta: etiquetaDe(o),
+        // La determinación aceptada y una hipótesis suelta no son lo mismo, y en el mapa
+        // tampoco: se dice cuál de las dos se está mirando.
+        detalle:
+          `${hora(o.capturadoEn)}` +
+          (o.determinacion
+            ? ' · determinación aceptada'
+            : o.identificaciones.length > 0
+              ? ` · ${plural(o.identificaciones.length, 'hipótesis', 'hipótesis')}`
+              : '') +
+          (o.cuantos !== undefined ? ` · ${o.cuantos}` : ''),
+        retractada: o.retractada,
+      })),
+    [observaciones],
+  );
+  return (
+    <PantallaMapa
+      gps={gps}
+      puntos={puntos}
+      titulo={campo.salida?.localidad || 'La salida'}
+      cerrar={cerrar}
+      abrirPunto={(id) => {
+        const o = observaciones.find((x) => x.id === id);
+        if (o) abrirDetalle(o);
+      }}
+    />
+  );
+}
+
+function MapaDelCuaderno({
+  gps,
+  cerrar,
+  verSalida,
+}: {
+  gps: EstadoGps;
+  cerrar: () => void;
+  verSalida: (id: string) => void;
+}) {
+  const [sitios, setSitios] = useState<Lugar[]>([]);
+  useEffect(() => {
+    void lugares().then(setSitios, () => setSitios([]));
+  }, []);
+  const puntos = useMemo<PuntoMapa[]>(
+    () =>
+      sitios.map((l) => ({
+        id: l.salidaId,
+        latitud: l.latitud,
+        longitud: l.longitud,
+        etiqueta: l.localidad || dia(l.fecha, true),
+        detalle: `${dia(l.fecha)} · ${plural(l.observaciones, 'observación', 'observaciones')}`,
+      })),
+    [sitios],
+  );
+  return (
+    <PantallaMapa
+      gps={gps}
+      puntos={puntos}
+      titulo="El cuaderno en el mapa"
+      cerrar={cerrar}
+      abrirPunto={verSalida}
+    />
   );
 }

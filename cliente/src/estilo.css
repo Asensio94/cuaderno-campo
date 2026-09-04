@@ -1169,3 +1169,122 @@ select:focus {
 .serie .ayuda {
   margin-top: 1rem;
 }
+
+/* Mapa.
+   El lienzo ocupa lo que queda entre la cabecera y el borde inferior, y todo lo que va encima
+   —el chip del GPS, los dos botones, la tarjeta del punto tocado— flota sin robarle sitio ni
+   robarle los gestos: la capa de encima no recibe toques, solo sus hijos. */
+.hoja.mapa {
+  position: fixed;
+  overflow: hidden;
+}
+.lienzo-mapa {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  background: var(--realce);
+}
+.hoja.mapa .mapa-encima {
+  position: absolute;
+  inset: calc(3.4rem + env(safe-area-inset-top)) 0 0 0;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+}
+.hoja.mapa .mapa-encima > * {
+  pointer-events: auto;
+}
+.mapa-gps {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  right: 0.75rem;
+}
+.mapa-botones {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-self: flex-end;
+}
+.redondo {
+  width: var(--toque);
+  height: var(--toque);
+  border-radius: 50%;
+  border: 1px solid var(--linea);
+  background: var(--lienzo);
+  color: var(--tinta);
+  box-shadow: var(--sombra);
+  display: grid;
+  place-items: center;
+}
+.mapa-tarjeta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--radio);
+  border: 1px solid var(--linea);
+  background: var(--lienzo);
+  box-shadow: var(--sombra);
+}
+.mapa-tarjeta > div {
+  flex: 1;
+  min-width: 0;
+}
+.mapa-tarjeta p {
+  margin: 0.15rem 0 0;
+  font-size: 0.85rem;
+  color: var(--tenue);
+}
+.mapa-tarjeta .secundario {
+  flex: none;
+}
+/* Los controles de MapLibre en la paleta del cuaderno: por defecto son blancos con azul. */
+.maplibregl-ctrl-scale {
+  background: color-mix(in srgb, var(--lienzo) 80%, transparent);
+  border-color: var(--tinta);
+  color: var(--tinta);
+  font-size: 0.7rem;
+}
+.maplibregl-ctrl-attrib {
+  background: color-mix(in srgb, var(--lienzo) 85%, transparent);
+}
+.maplibregl-ctrl-attrib a,
+.maplibregl-ctrl-attrib {
+  color: var(--tenue);
+}
+.maplibregl-ctrl-attrib-button {
+  background-color: color-mix(in srgb, var(--lienzo) 85%, transparent);
+}
+
+/* La lista de mapas guardados. */
+.mapa-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem 0.5rem 0.9rem;
+}
+.mapa-item.activa {
+  border-color: var(--verde);
+}
+.mapa-elegir {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  align-items: flex-start;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0.35rem 0;
+  text-align: left;
+  font: inherit;
+}
+.mapa-elegir .tenue {
+  font-size: 0.8rem;
+}
