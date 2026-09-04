@@ -39,6 +39,7 @@ from pathlib import Path
 from typing import Any, Iterable, Sequence
 
 from ..generadores.registro import RAIZ_NUCLEO, Clase, Registro, cargar
+from . import migraciones
 from .escritor import Escritor
 from .hlc import Reloj, analizar
 from .pliegue import (
@@ -111,8 +112,14 @@ class Almacen:
                 " VALUES (1, ?, NULL, ?)",
                 (VERSION_PROYECCION, _ahora()),
             )
+            # El esquema generado ya sale con la forma final: las migraciones se apuntan como
+            # puestas, no se corren (migraciones.py).
+            migraciones.aplicar(self.cx, base_nueva=True)
             self.cx.commit()
             return
+        # Una base que ya existía puede venir de una versión anterior del esquema del registro.
+        # La proyección se reconstruye sola; la tabla `suceso` no, y eso es dato irreversible.
+        migraciones.aplicar(self.cx, base_nueva=False)
         fila = self.cx.execute("SELECT version FROM proyeccion_meta WHERE id = 1").fetchone()
         if fila is None or fila["version"] != VERSION_PROYECCION:
             self._renovar_proyeccion()

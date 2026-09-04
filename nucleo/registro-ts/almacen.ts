@@ -21,6 +21,7 @@ import type { CampoRegistro, ClaseRegistro } from '../generado/terminos.ts';
 import type { BaseDatos, FilaSql, Valor } from './base-datos.ts';
 import { Escritor } from './escritor.ts';
 import { Reloj, analizar } from './hlc.ts';
+import { aplicar as aplicarMigraciones } from './migraciones.ts';
 import {
   TERMINO_ESTADO_VERIFICACION,
   aColumnas,
@@ -88,8 +89,14 @@ export class Almacen {
           ' VALUES (1, ?, NULL, ?)',
         [VERSION_PROYECCION, ahora()],
       );
+      // El esquema generado ya sale con la forma final: las migraciones se anotan como puestas,
+      // no se corren (migraciones.ts).
+      await aplicarMigraciones(this.bd, true);
       return;
     }
+    // Una base que ya existía puede venir de una versión anterior del esquema del registro. La
+    // proyección se reconstruye sola; la tabla `suceso` no, y eso es dato irreversible.
+    await aplicarMigraciones(this.bd, false);
     const meta = await this.bd.una('SELECT version FROM proyeccion_meta WHERE id = 1');
     if (!meta || meta.version !== VERSION_PROYECCION) await this.renovarProyeccion();
   }
