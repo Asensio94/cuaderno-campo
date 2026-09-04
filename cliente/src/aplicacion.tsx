@@ -176,7 +176,19 @@ function Grabador({
     }
   };
 
-  if (!hayMicrofono()) return null;
+  // Sin `mediaDevices` el botón no puede hacer nada, pero esfumarse sin decirlo es el fallo del
+  // mapa mudo otra vez: parece que el cuaderno no graba, y lo que pasa es que el navegador no da
+  // micrófono fuera de un contexto seguro. Vale la pena el aviso aunque casi nadie lo vea.
+  if (!hayMicrofono())
+    return (
+      <div className="grabador">
+        <Aviso tono="flojo">
+          Aquí no se graba: este navegador solo da el micrófono en un contexto seguro,{' '}
+          <code>https://</code> o <code>localhost</code>. Instalado desde la dirección de siempre,
+          sí.
+        </Aviso>
+      </div>
+    );
 
   return (
     <div className="grabador">
