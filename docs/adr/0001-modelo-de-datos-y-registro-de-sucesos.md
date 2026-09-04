@@ -597,12 +597,11 @@ tamaño, que hay que medir y no estimar.
   Île-de-France, que es urbana y a zoom 14 son casi todos edificios. Las dos entran en la cuota
   de una PWA instalada con `persist()` concedido, y la de Île-de-France sigue siendo una
   descarga que se hace en casa y una vez (construcción `20260904`).
-- **Ni una etiqueta de texto en el mapa base.** Cualquier capa de símbolos con `text-field`
-  exige glifos SDF servidos o empaquetados, y en el Pas no hay servidor. El estilo se escribe a
-  mano en `cliente/src/mapa/estilo.ts` —nueve capas, sin `@protomaps/basemaps`, que serían doce
-  estilos y una dependencia nueva (restricción 5)— y los únicos nombres que aparecen son los
-  míos, pintados en el DOM. Queda como decisión abierta: empaquetar dos PBF de glifos (unos
-  60 kB, fuente con licencia OFL) daría los topónimos, que en campo se echan de menos.
+- **Etiquetas de texto: decisión cerrada, y con la fuente dentro (§15.19).** El estilo se sigue
+  escribiendo a mano en `cliente/src/mapa/estilo.ts`, sin `@protomaps/basemaps`, y los glifos SDF
+  ya no se piden a ningún servidor: van empaquetados dos rangos latinos de Noto Sans (OFL), 154 KB
+  en total, en la precarga del trabajador de servicio. Se rotulan los núcleos de población y los
+  ríos.
 - **Trampa de empaquetado, anotada porque no da error.** MapLibre deduce la URL de su worker de
   `import.meta.url` y la busca al lado del módulo; con Vite el módulo se sirve preempaquetado
   desde `.vite/deps/`, donde ese fichero no existe. El worker sale 404, MapLibre no lo
@@ -694,7 +693,7 @@ cuaderno-campo/
 | I1 ✔ | Registro, HLC y pliegue en ambos lenguajes | P1-P4, aislamiento entre cuadernos (§4.6), conformidad entre lenguajes |
 | I2a ~ | Almacén SQLite y captura: nota, foto, GPS | convergencia de los tres caminos de proyección (§15.11) ✔ y una salida real en el Pas |
 | I2b ✔ | Audio: grabación WAV, cola de inferencia sin inferir | audio grabado y encolado, recuperado tras cerrar la aplicación |
-| I3 ✔ | Mapa offline: PMTiles en OPFS, descarga reanudable, política de cuota | presupuesto medido con el fichero delante (§9): 14,4 MB el Pas, 121,2 MB Île-de-France ✔; el recorte releído por una implementación ajena (`pmtiles` de npm) y 22 pruebas del formato ✔; el mapa pintado en un navegador de verdad, con la observación, el arreglo del GPS y su error |
+| I3 ✔ | Mapa offline: PMTiles en OPFS, descarga reanudable, política de cuota | presupuesto medido con el fichero delante (§9): 14,4 MB el Pas, 121,2 MB Île-de-France ✔; el recorte releído por una implementación ajena (`pmtiles` de npm) y 22 pruebas del formato ✔; el mapa pintado en un navegador de verdad, con la observación, el arreglo del GPS y su error; los rótulos, contra los mosaicos de verdad y el validador del estilo (§15.19) |
 | I4 ✔ | Consulta de series con subárbol local, por taxón y por sitio (§17) | series conocidas, clausura taxonómica y aislamiento entre cuadernos ✔; la pantalla, a mano sobre el cuaderno de pruebas |
 | I5 ✔ | Exportación DwC-A (§15.14) | estructura contra `meta.xml`, fuga de EXIF ✔; validador de GBIF, paso manual (403 a la API anónima) |
 | I7 ✔ | Copia de seguridad: ZIP con el registro y los medios (§15.12) | ida y vuelta entre lenguajes, restauración idempotente |
@@ -1397,6 +1396,36 @@ navegador no hay ficheros que leer y copiarlos a mano crearía la segunda fuente
 La carpeta vacía es información, no descuido: desde el I0 no ha hecho falta ninguna migración,
 porque lo que en otros proyectos lo sería —una columna más, un índice, un tipo de suceso nuevo—
 aquí se despliega reconstruyendo la proyección (§15.15).
+
+### 15.19 Los topónimos del mapa, y el paquete que sigue sin entrar
+
+Eran dos decisiones pendientes y se resuelven en direcciones distintas.
+
+*Los glifos, sí.* Un mapa mudo obliga a saber dónde estás para leerlo, que es justo lo que no
+pasa cuando estás donde no habías estado. Van empaquetados dos rangos SDF de Noto Sans —redonda y
+seminegra, el rango 0-255, 76 y 78 KB— en `cliente/public/glifos/`, servidos por la propia
+aplicación desde `import.meta.env.BASE_URL` y precargados por el trabajador de servicio: el mapa
+rotula en modo avión igual que pinta. El rango latino escribe el Pas y el Île-de-France enteros
+—`Pisueña`, `Viaña`, `Île-de-France`, `L'Étang`—; un topónimo en cirílico pediría un rango que no
+está y saldría en blanco. Es un límite aceptado, no un descuido, y `pruebas/test_glifos_mapa.py`
+comprueba las tres formas de romperlo sin enterarse: renombrar una pila y no su `text-font`,
+sacar los `.pbf` de la precarga, y dar por hecho que el rango trae la letra que hace falta.
+
+Se rotulan cuatro cosas: villas y ciudades en seminegra, aldeas y lugares en redonda, los ríos a
+lo largo del cauce y las masas de agua con nombre. Los ríos son la mitad del valor: saber que el
+arroyo que cruzas es el Yera y no el Pisueña cambia lo que apuntas. El texto es `name`, el nombre
+sobre el terreno, no `name:es`: es el que está en el cartel. Los filtros respetan el `min_zoom`
+que traen los propios mosaicos, y están comprobados **contra los mosaicos de verdad** —decodificando
+el MVT del Pas y de Saint-Germain— y no contra la documentación, igual que los colores de uso del
+suelo. El estilo entero pasa por el validador de `maplibre-gl-style-spec` en claro y en oscuro.
+
+*El paquete, no.* `@protomaps/basemaps` se autorizó y no lo he añadido, y esto es una objeción,
+no un olvido. Lo que ese paquete resuelve es tener un estilo hecho; el problema que había era no
+tener glifos, y los glifos no vienen de ahí. Entrar costaría cambiar nueve capas escogidas para
+ver el terreno por doce estilos generales pensados para ver comercios, más su sistema de temas y
+sus iconos, y a cambio de nada que no esté ya hecho. La restricción 5 existe para esto. Si en
+algún momento hace falta lo que sí trae —los estilos completos, con sus POI y su tipografía—, se
+añade entonces y se dice por qué.
 
 ---
 

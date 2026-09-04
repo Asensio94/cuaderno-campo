@@ -6,17 +6,31 @@
 // permite decidir qué se ve: en un mapa de campo importan los caminos y el agua, no los
 // comercios.
 //
-// **Sin una sola etiqueta de texto.** No es una omisión estética: cualquier capa `symbol` con
-// `text-field` obliga a un servidor de glifos o a empaquetar los SDF de una fuente, y en el Pas
-// no hay servidor. Los nombres que sí aparecen son los míos —sitios y observaciones— y se pintan
-// como marcadores del DOM, que no gastan glifos. Está anotado como decisión pendiente.
+// **Los topónimos, con la fuente dentro.** Una capa `symbol` con `text-field` obliga a un
+// servidor de glifos, y en el Pas no hay servidor: por eso el mapa estuvo mudo hasta ahora. Lo
+// que hay ahora son dos ficheros SDF empaquetados con la aplicación (`cliente/public/glifos/`,
+// Noto Sans en OFL, el rango 0-255 y nada más), servidos desde la propia caché del trabajador de
+// servicio. El rango latino cubre el Pas y el Île-de-France enteros —`ñ`, `í`, `Î`, `ç`—; un
+// nombre en cirílico o en griego pediría un rango que no está y saldría sin pintar, que es un
+// fallo aceptable en este cuaderno y no lo sería en un mapa general.
+//
+// Se etiquetan los núcleos de población y **los ríos**, que en un cuaderno de campo fluvial son
+// la mitad del mapa. Lo que se pinta es `name`, el nombre sobre el terreno, no `name:es`: es el
+// que está en el cartel del pueblo.
+//
+// Los nombres propios del cuaderno —sitios y observaciones— siguen siendo marcadores del DOM y
+// no gastan glifos.
 //
 // Los valores de `kind` están comprobados contra los mosaicos de verdad, no contra la
 // documentación: se listaron decodificando el MVT del Pas y de Santander. Todo lo que no está en
 // la lista cae en el color de reserva, así que una versión nueva del esquema despinta cosas pero
 // no rompe el mapa.
 
-import type { DataDrivenPropertyValueSpecification, StyleSpecification } from 'maplibre-gl';
+import type {
+  DataDrivenPropertyValueSpecification,
+  ExpressionSpecification,
+  StyleSpecification,
+} from 'maplibre-gl';
 
 import { type Mapa, urlDeMosaicos } from './mosaicos.ts';
 
@@ -38,6 +52,10 @@ export interface Paleta {
   camino: string;
   ferrocarril: string;
   linde: string;
+  /** Tinta de los rótulos y su reborde, que es lo que los hace legibles sobre cualquier fondo. */
+  texto: string;
+  textoHalo: string;
+  textoAgua: string;
 }
 
 /** Papel topográfico. Verde para lo vegetal, azul para el agua, y las vías en gris tinta: en un
@@ -60,6 +78,9 @@ export const CLARA: Paleta = {
   camino: '#8a7a5c',
   ferrocarril: '#9a9482',
   linde: '#9a9482',
+  texto: '#3c3a2c',
+  textoHalo: '#f7f5ec',
+  textoAgua: '#3d6a87',
 };
 
 export const OSCURA: Paleta = {
@@ -80,9 +101,32 @@ export const OSCURA: Paleta = {
   camino: '#7a6a4a',
   ferrocarril: '#43412f',
   linde: '#4a4836',
+  texto: '#cfcbb6',
+  textoHalo: '#0d1009',
+  textoAgua: '#7fadc9',
 };
 
 const FUENTE = 'base';
+
+/** Los SDF empaquetados. `BASE_URL` porque en GitHub Pages la aplicación cuelga de un
+ * subdirectorio, y una ruta absoluta pediría los glifos a la raíz del dominio, donde no están.
+ * El nombre de la pila es el de la carpeta: MapLibre lo mete tal cual en la URL. */
+const GLIFOS = `${import.meta.env.BASE_URL}glifos/{fontstack}/{range}.pbf`;
+const REDONDA = ['NotoSans-Regular'];
+const SEMINEGRA = ['NotoSans-Medium'];
+
+/** Los mosaicos traen `min_zoom`: el zoom a partir del cual Protomaps considera que ese nombre
+ * merece verse. Respetarlo es lo que evita doscientas etiquetas de barrio en un valle. */
+const DESDE_SU_ZOOM: ExpressionSpecification = ['<=', ['get', 'min_zoom'], ['zoom']];
+
+/** Un rótulo se lee sobre bosque, sobre agua y sobre roca porque lleva reborde del color del
+ * papel, no porque el color acierte. */
+const REBORDE = (p: Paleta) => ({
+  'text-color': p.texto,
+  'text-halo-color': p.textoHalo,
+  'text-halo-width': 1.4,
+  'text-halo-blur': 0.4,
+});
 
 /** Los usos del suelo que se pintan, con el color de cada uno. Lo que no esté aquí sale como
  * tierra: mejor un hueco del color del papel que una mancha de un color inventado.
@@ -147,6 +191,7 @@ export function estiloDe(mapa: Mapa, oscuro: boolean): StyleSpecification {
   return {
     version: 8,
     name: `cuaderno-${mapa.zona ?? mapa.nombre}`,
+    glyphs: GLIFOS,
     sources: {
       [FUENTE]: {
         type: 'vector',
@@ -307,6 +352,94 @@ export function estiloDe(mapa: Mapa, oscuro: boolean): StyleSpecification {
           'line-dasharray': [4, 2, 1, 2],
           'line-opacity': 0.7,
         },
+      },
+      {
+        // Los ríos, rotulados a lo largo del cauce. En el Pas esto es la mitad de la
+        // información del mapa: saber que el arroyo que cruzas es el Yera y no el Pisueña
+        // cambia lo que apuntas.
+        id: 'agua-nombres',
+        type: 'symbol',
+        source: FUENTE,
+        'source-layer': 'water',
+        minzoom: 11,
+        filter: ['all', ['==', ['geometry-type'], 'LineString'], ['has', 'name']],
+        layout: {
+          'text-field': ['get', 'name'],
+          'text-font': REDONDA,
+          'text-size': ['interpolate', ['linear'], ['zoom'], 11, 10, 16, 12.5],
+          'symbol-placement': 'line',
+          'text-max-angle': 32,
+          'symbol-spacing': 320,
+          'text-letter-spacing': 0.04,
+        },
+        paint: { ...REBORDE(p), 'text-color': p.textoAgua },
+      },
+      {
+        // Embalses, lagos y rías. Protomaps no rotula el polígono: deja un punto de etiqueta con
+        // el nombre dentro de la masa de agua, y es ese punto el que se pinta (comprobado
+        // decodificando el mosaico, donde «Embalse del Ebro» es un `Point`, no un `Polygon`).
+        id: 'agua-nombres-masa',
+        type: 'symbol',
+        source: FUENTE,
+        'source-layer': 'water',
+        minzoom: 10,
+        filter: ['all', ['==', ['geometry-type'], 'Point'], ['has', 'name'], DESDE_SU_ZOOM],
+        layout: {
+          'text-field': ['get', 'name'],
+          'text-font': REDONDA,
+          'text-size': ['interpolate', ['linear'], ['zoom'], 10, 10, 15, 12.5],
+          'text-max-width': 7,
+        },
+        paint: { ...REBORDE(p), 'text-color': p.textoAgua },
+      },
+      {
+        // Aldeas, barrios y lugares. En el valle son casi todos `hamlet` y `locality`, y son los
+        // que dan la posición de verdad: «encima de Guzparras» dice más que unas coordenadas.
+        id: 'toponimos-menores',
+        type: 'symbol',
+        source: FUENTE,
+        'source-layer': 'places',
+        minzoom: 11,
+        filter: [
+          'all',
+          ['==', ['get', 'kind'], 'locality'],
+          ['!', ['in', ['get', 'kind_detail'], ['literal', ['city', 'town']]]],
+          DESDE_SU_ZOOM,
+        ],
+        layout: {
+          'text-field': ['get', 'name'],
+          'text-font': REDONDA,
+          'text-size': ['interpolate', ['linear'], ['zoom'], 11, 10.5, 16, 13],
+          'text-max-width': 8,
+          'text-padding': 4,
+          // El punto está donde está el pueblo: el rótulo se aparta para no taparlo.
+          'text-offset': [0, 0.1],
+          'symbol-sort-key': ['-', 0, ['to-number', ['get', 'population_rank'], 0]],
+        },
+        paint: REBORDE(p),
+      },
+      {
+        // Villas y ciudades, en seminegra y desde más lejos.
+        id: 'toponimos-mayores',
+        type: 'symbol',
+        source: FUENTE,
+        'source-layer': 'places',
+        minzoom: 7,
+        filter: [
+          'all',
+          ['==', ['get', 'kind'], 'locality'],
+          ['in', ['get', 'kind_detail'], ['literal', ['city', 'town']]],
+          DESDE_SU_ZOOM,
+        ],
+        layout: {
+          'text-field': ['get', 'name'],
+          'text-font': SEMINEGRA,
+          'text-size': ['interpolate', ['linear'], ['zoom'], 7, 11, 12, 15, 16, 18],
+          'text-max-width': 8,
+          'text-padding': 6,
+          'symbol-sort-key': ['-', 0, ['to-number', ['get', 'population_rank'], 0]],
+        },
+        paint: REBORDE(p),
       },
     ],
   };

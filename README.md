@@ -103,6 +103,9 @@ piezas:
   desde datos de OSM bajo **ODbL**. La atribución no es decoración: va pintada en el mapa y viaja
   dentro del propio fichero `.pmtiles`. No se descargan mosaicos en bloque de
   `tile.openstreetmap.org`, que su política de uso prohíbe expresamente.
+- **Noto Sans** (los glifos de los rótulos del mapa) está bajo la **SIL Open Font License 1.1**,
+  que permite el uso, la modificación y la redistribución con la condición de que la licencia
+  acompañe a la fuente: va en `cliente/public/glifos/OFL.txt`. No impone restricción comercial.
 - **GBIF**: la resolución de nombres usa su API pública. Conviene citar los conjuntos de datos y
   respetar sus condiciones al publicar.
 
@@ -171,10 +174,16 @@ se pide. Y **los mosaicos son lo único que este programa borra**: son datos de 
 vuelven a traer, mientras que una foto de campo, no. Si la cuota aprieta, se ofrece borrar mapas y
 jamás observaciones.
 
-El mapa base **no lleva una sola etiqueta de texto**: los nombres exigirían glifos de una fuente
-empaquetados o servidos, y en el monte no hay servidor. Los únicos rótulos son los propios, los
-del cuaderno. El estilo son nueve capas escritas a mano (`cliente/src/mapa/estilo.ts`), en claro y
-en oscuro, con los caminos y el agua por delante de las carreteras, que es lo que se mira andando.
+El estilo son nueve capas escritas a mano (`cliente/src/mapa/estilo.ts`), en claro y en oscuro,
+con los caminos y el agua por delante de las carreteras, que es lo que se mira andando. Encima van
+los rótulos: pueblos y aldeas, los ríos a lo largo del cauce y las masas de agua con nombre. Se
+pinta `name`, el nombre sobre el terreno, el que está en el cartel.
+
+Los rótulos no se piden a ningún servidor de glifos —en el monte no hay—: **la fuente viaja
+dentro**. Son dos ficheros SDF de Noto Sans en `cliente/public/glifos/` (redonda y seminegra, el
+rango latino 0-255, 154 KB entre los dos) y entran en la precarga, así que el mapa rotula en modo
+avión igual que pinta. El rango cubre el Pas y el Île-de-France enteros; un topónimo en cirílico
+o en griego pediría un rango que no está y saldría sin pintar.
 
 Los ficheros `.pmtiles` no se versionan: se generan con el comando de arriba.
 
@@ -262,8 +271,11 @@ Hecho también: el trabajador de BirdNET, con las etiquetas clasificadas y su vu
 por copia; la pantalla de series, con su fenología por meses; y el mapa sin conexión, con el
 recorte de mosaicos medido y su gestión de cuota.
 
-Hecho además: el conector de Pl@ntNet, con la foto saneada antes de salir de la máquina; y el
-ejecutor de migraciones del registro en los dos lenguajes.
+Hecho además: el conector de Pl@ntNet, con la foto saneada antes de salir de la máquina; el
+ejecutor de migraciones del registro en los dos lenguajes; los topónimos del mapa, con la fuente
+empaquetada para que rotule en modo avión; y dos arreglos de la hoja de observación —el chip del
+taxón elegido y el enlace de restaurar copia salían con la tinta equivocada, invisibles en los dos
+temas, y ahora la hipótesis que va en cabeza se ve en la lista con su marca de «sin aceptar».
 
 Pendiente: validar un archivo real en gbif.org; una primera pasada de Pl@ntNet con clave de
 verdad; una salida de verdad al Pas con audio y su análisis.

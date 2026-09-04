@@ -47,9 +47,10 @@ export default defineConfig({
         ],
       },
       // El .wasm de SQLite y el .tsv del árbol de Aves tienen que estar en la caché o la aplicación
-      // no abre —ni identifica— sin cobertura,
-      // que es el caso normal en el Pas.
-      workbox: { globPatterns: ['**/*.{js,css,html,wasm,svg,woff2,png,tsv,json}'] },
+      // no abre —ni identifica— sin cobertura, que es el caso normal en el Pas. Los `.pbf` son
+      // los glifos del mapa: sin ellos MapLibre pide la fuente a una red que no hay y el mapa
+      // vuelve a quedarse mudo, sin decirlo.
+      workbox: { globPatterns: ['**/*.{js,css,html,wasm,svg,woff2,png,tsv,json,pbf}'] },
     }),
   ],
 });
