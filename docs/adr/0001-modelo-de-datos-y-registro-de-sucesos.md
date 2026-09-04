@@ -662,7 +662,7 @@ cuaderno-campo/
 | I2a ~ | Almacén SQLite y captura: nota, foto, GPS | convergencia de los tres caminos de proyección (§15.11) ✔ y una salida real en el Pas |
 | I2b ✔ | Audio: grabación WAV, cola de inferencia sin inferir | audio grabado y encolado, recuperado tras cerrar la aplicación |
 | I3 | Mapa offline: PMTiles en OPFS, descarga reanudable, política de cuota | presupuesto de tamaño medido, no estimado |
-| I4 ~ | Consulta de series con subárbol local, por taxón y por sitio | series conocidas, clausura taxonómica ✔ (núcleo TS); falta la pantalla |
+| I4 ✔ | Consulta de series con subárbol local, por taxón y por sitio (§17) | series conocidas, clausura taxonómica y aislamiento entre cuadernos ✔; la pantalla, a mano sobre el cuaderno de pruebas |
 | I5 ✔ | Exportación DwC-A (§15.14) | estructura contra `meta.xml`, fuga de EXIF ✔; validador de GBIF, paso manual (403 a la API anónima) |
 | I7 ✔ | Copia de seguridad: ZIP con el registro y los medios (§15.12) | ida y vuelta entre lenguajes, restauración idempotente |
 | I6 ✔ | Trabajador BirdNET sobre una copia, clases de etiqueta (§15.16) | hipótesis, taxones y señales esperadas con modelo falso; ninguna etiqueta sin clase; los pesos reales contra `sample.wav` |
@@ -1330,3 +1330,28 @@ lista el historial con su recuento de observaciones y notas, y una salida cerrad
 lectura: sin barra de acciones, sin botón de cerrar, sin enmienda. El registro admitiría los
 sucesos; la interfaz no los ofrece, porque enmendar una salida de hace tres años a ciegas es más
 probable que sea un descuido que una corrección.
+
+*La pantalla de series es la que justifica el modelo.* Un taxón del árbol local, un centro, un
+radio y una ventana; y arriba de todo, siempre a la vista, el selector de **qué cuenta**:
+determinaciones aceptadas o cualquier hipótesis no rechazada por encima de un umbral. Sin valor
+por defecto escondido (§6), y con la letra pequeña dicha en la propia pantalla: las hipótesis de
+BirdNET sirven para saber dónde mirar, no para contar. Tres decisiones más:
+
+  - *El centro no siempre es el GPS.* Consultar se hace tanto en el monte como en el sofá, y con
+    el cuaderno cerrado el GPS está apagado a propósito. Así que la lista de sitios son las
+    salidas ya escritas, cada una en el centro de sus observaciones (`lugares()` de `campo.ts`).
+    No son `sitio.declarado` —la aplicación todavía no emite ese suceso—, y por eso se deducen en
+    lectura en vez de inventarse un dato que nadie ha escrito.
+  - *La serie es de un cuaderno.* `serie()` acepta `cuadernoId` y la pantalla pasa siempre el de
+    este aparato. Con la sincronización, o con una copia de Elisa restaurada, el almacén puede
+    tener sucesos de otro cuaderno: sumarlos daría una serie que no es de nadie (§4.6). Hay
+    prueba: su petirrojo, escrito en su cuaderno y en el mismo sitio, no entra en mi serie.
+  - *La coordenada que se filtra es la real.* `cdc:politicaSensibilidad` difumina al exportar y al
+    sincronizar, nunca al leer el cuaderno propio. Al lado de cada distancia va la incertidumbre
+    del arreglo, que es lo que permite leer «a 40 m ±60 m» como lo que es: puede estar dentro o
+    fuera del radio.
+
+Y una vista que no estaba en el guion pero que es lo que se le pide a un cuaderno de campo: la
+**fenología por meses**, doce columnas con la cuenta de cada mes sumando todos los años. Doce
+números y una rejilla, sin biblioteca de gráficas: en el presupuesto de dependencias del §10 no
+cabe una, y aquí no hace falta.

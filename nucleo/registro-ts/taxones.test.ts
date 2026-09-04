@@ -152,4 +152,47 @@ describe('series (§6)', () => {
     assert.equal(new Set(cualquiera.map((p) => p.ocurrenciaId)).size, cualquiera.length);
     await bd.cerrar();
   });
+
+  test('la serie es de un cuaderno, no del almacén', async () => {
+    const { bd, a } = await conArbol();
+    await a.anadir(CORPUS, { verificar: true });
+    const centro = { latitud: 43.1466, longitud: -3.9351 };
+
+    // Elisa sale el mismo día al mismo sitio y también apunta un petirrojo. Sus sucesos son de
+    // su cuaderno: legítimos, ajenos, y no parte de mi serie (§4.6).
+    const e = await a.escritor('cuaderno-elisa', 'movil-elisa');
+    const suya = e.nuevoId();
+    const hipotesis = e.nuevoId();
+    await a.anadir([
+      await e.escribir('ocurrencia.registrada', suya, {
+        'dwc:eventID': '199e578e-ae3e-47d5-8f76-f5d2280d04d7',
+        'dwc:recordedBy': 'Elisa',
+        'dwc:decimalLatitude': 43.14655,
+        'dwc:decimalLongitude': -3.93502,
+        'dwc:coordinateUncertaintyInMeters': 5,
+        'cdc:capturadoEn': '2025-08-24T07:31:00+02:00',
+      }),
+      await e.escribir('identificacion.propuesta', hipotesis, {
+        'dwc:occurrenceID': suya,
+        'dwc:verbatimIdentification': 'petirrojo',
+        'dwc:identifiedBy': 'Elisa',
+        'dwc:dateIdentified': '2025-08-24T07:31:20+02:00',
+        'dwc:scientificName': 'Erithacus rubecula',
+        'dwc:taxonRank': 'species',
+        'cdc:gbifTaxonKey': PETIRROJO,
+      }),
+      await e.escribir('identificacion.aceptada', hipotesis, {}),
+    ], { verificar: true });
+
+    const consulta = { taxonKey: ERITHACUS, ...centro, radioM: 2000, estado: 'aceptada' as const };
+    const todos = await serie(bd, consulta);
+    const mios = await serie(bd, { ...consulta, cuadernoId: 'cuaderno-pablo' });
+    const deElisa = await serie(bd, { ...consulta, cuadernoId: 'cuaderno-elisa' });
+    assert.equal(todos.length, mios.length + deElisa.length);
+    assert.equal(deElisa.length, 1);
+    assert.equal(deElisa[0].ocurrenciaId, suya);
+    assert.ok(mios.length >= 1);
+    assert.ok(!mios.some((p) => p.ocurrenciaId === suya));
+    await bd.cerrar();
+  });
 });

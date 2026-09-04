@@ -8,6 +8,7 @@
 
 import { conectar, nuevoId } from './almacen/cliente.ts';
 import type { Fila } from '../../nucleo/registro-ts/pliegue.ts';
+import type { ConsultaSerie, PuntoSerie } from '../../nucleo/registro-ts/taxones.ts';
 import type { Posicion } from './gps.ts';
 import * as exif from './exif.ts';
 import { guardar } from './medios.ts';
@@ -555,4 +556,58 @@ export async function estado(verSalida?: string): Promise<EstadoCampo> {
     .sort((a, b) => (a.escritaEn ?? '').localeCompare(b.escritaEn ?? ''));
 
   return { cuaderno, abierta, salidas, salida, observaciones, notas };
+}
+
+// --- Series: lo mismo, otra vez, en otro sitio (§6) -----------------------------------
+
+export type { PuntoSerie };
+
+/** Los sitios que el cuaderno conoce: uno por salida con observaciones, en el centro de las
+ * suyas. No son `sitio.declarado` —la aplicación todavía no los emite—, sino lo que se deduce
+ * de dónde se apuntó: para preguntar «¿qué he visto aquí?» sin GPS, que es lo que pasa cuando
+ * la consulta se hace en casa. */
+export interface Lugar {
+  readonly salidaId: string;
+  readonly fecha: string;
+  readonly localidad?: string;
+  readonly latitud: number;
+  readonly longitud: number;
+  readonly observaciones: number;
+}
+
+export async function lugares(): Promise<Lugar[]> {
+  const id = cuadernoId();
+  if (!id) return [];
+  const salidas = (await almacen.filas('proy_salida')).filter((f) => f['cdc:cuadernoID'] === id);
+  const ocurrencias = (await almacen.filas('proy_ocurrencia')).filter(
+    (f) => f['cdc:cuadernoID'] === id && !f['cdc:retractada'],
+  );
+  const lista: Lugar[] = [];
+  for (const s of salidas) {
+    const eventID = String(s['dwc:eventID']);
+    const suyas = ocurrencias.filter((o) => o['dwc:eventID'] === eventID);
+    if (suyas.length === 0) continue;
+    // Media aritmética de las coordenadas. Dentro de una salida a pie el error es de metros y
+    // no cruza el antimeridiano; si algún día lo cruza, será el menor de los problemas.
+    lista.push({
+      salidaId: eventID,
+      fecha: String(s['dwc:eventDate']),
+      localidad: texto(s, 'dwc:locality'),
+      latitud: suyas.reduce((a, o) => a + Number(o['dwc:decimalLatitude']), 0) / suyas.length,
+      longitud: suyas.reduce((a, o) => a + Number(o['dwc:decimalLongitude']), 0) / suyas.length,
+      observaciones: suyas.length,
+    });
+  }
+  return lista.sort((a, b) => b.fecha.localeCompare(a.fecha));
+}
+
+/** La serie de un taxón alrededor de un punto, siempre dentro de este cuaderno: los sucesos de
+ * otro cuaderno que hubiera en el almacén no son mis observaciones y no cuentan (§4.6).
+ *
+ * La coordenada que se filtra es la real, la que está en el registro. `cdc:politicaSensibilidad`
+ * difumina al exportar y al sincronizar, nunca aquí: el cuaderno propio se lee entero. */
+export async function serie(consulta: Omit<ConsultaSerie, 'cuadernoId'>): Promise<PuntoSerie[]> {
+  const id = cuadernoId();
+  if (!id) return [];
+  return almacen.serie({ ...consulta, cuadernoId: id });
 }

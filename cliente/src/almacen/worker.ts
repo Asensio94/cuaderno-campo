@@ -27,6 +27,7 @@ import {
   buscarTaxones,
   cargarTaxones,
   serie,
+  taxon,
   versionTaxones,
 } from '../../../nucleo/registro-ts/taxones.ts';
 import type { ConsultaSerie } from '../../../nucleo/registro-ts/taxones.ts';
@@ -137,6 +138,7 @@ const METODOS: Record<string, (a: Almacen, args: readonly unknown[]) => Promise<
   cargarTaxones: (a, [tsv, version]) => cargarTaxones(a.bd, tsv as string, version as string),
   buscarTaxones: (a, [texto, limite]) =>
     buscarTaxones(a.bd, texto as string, limite as number | undefined),
+  taxon: (a, [key]) => taxon(a.bd, key as number),
   serie: (a, [consulta]) => serie(a.bd, consulta as ConsultaSerie),
 };
 

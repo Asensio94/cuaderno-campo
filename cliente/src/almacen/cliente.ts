@@ -42,6 +42,7 @@ export interface AlmacenRemoto {
   versionTaxones(): Promise<string | null>;
   cargarTaxones(tsv: string, version: string): Promise<number>;
   buscarTaxones(texto: string, limite?: number): Promise<Taxon[]>;
+  taxon(key: number): Promise<Taxon | null>;
   serie(consulta: ConsultaSerie): Promise<PuntoSerie[]>;
 }
 
@@ -99,6 +100,7 @@ export function conectar(nombre: string): AlmacenRemoto {
     versionTaxones: () => llamar('versionTaxones'),
     cargarTaxones: (tsv, version) => llamar('cargarTaxones', tsv, version),
     buscarTaxones: (texto, limite) => llamar('buscarTaxones', texto, limite),
+    taxon: (key) => llamar('taxon', key),
     serie: (consulta) => llamar('serie', consulta),
   };
 }

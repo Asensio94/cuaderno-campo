@@ -39,3 +39,10 @@ export async function buscarTaxones(texto: string): Promise<Taxon[]> {
   await asegurarTaxones();
   return almacen.buscarTaxones(texto);
 }
+
+/** El taxón de una clave, para arrancar una serie desde una determinación ya escrita: la
+ * identificación guarda la clave de GBIF, y la pantalla necesita el nombre y el rango. */
+export async function taxonPorClave(key: number): Promise<Taxon | null> {
+  await asegurarTaxones();
+  return almacen.taxon(key);
+}

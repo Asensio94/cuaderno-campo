@@ -168,12 +168,12 @@ Fase 0, en curso.
 Hecho: modelo de datos y registro de sucesos con sus invariantes; almacén en Python y su gemelo en
 TypeScript sobre wa-sqlite/OPFS; captura de nota, foto, audio (WAV) con su cola, GPS y hora con
 zona; enmienda, retractación y política de sensibilidad; determinación humana con el subárbol de
-Aves de GBIF en local; consulta de series (taxón × radio × ventana temporal) en el núcleo; copia
+Aves de GBIF en local; consulta de series (taxón × radio × ventana temporal) con su pantalla; copia
 de seguridad y restauración; exportación Darwin Core Archive con saneado de metadatos; interfaz
 de campo instalable; identificación de aves por canto con BirdNET en local.
 
 Hecho también: el trabajador de BirdNET, con las etiquetas clasificadas y su vuelta al teléfono
-por copia.
+por copia; y la pantalla de series, con su fenología por meses.
 
-Pendiente: pantalla de series; mapa sin conexión; validar un archivo real en gbif.org; una salida
-de verdad al Pas con audio y su análisis.
+Pendiente: mapa sin conexión; validar un archivo real en gbif.org; una salida de verdad al Pas con
+audio y su análisis.

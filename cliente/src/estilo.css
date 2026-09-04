@@ -1045,3 +1045,127 @@ pre {
   font-size: 0.95rem;
   color: var(--tenue);
 }
+
+/* --- Series: la consulta (pantalla-series.tsx) -------------------------------------- */
+
+/* Los grupos de tres y de cuatro. Dos columnas es lo normal —dos opciones enfrentadas—, pero
+   un radio o un umbral son escalas, y una escala se lee de un tirón, no en dos filas. */
+.segmentos.tres {
+  grid-template-columns: repeat(3, 1fr);
+}
+.segmentos.cuatro {
+  grid-template-columns: repeat(4, 1fr);
+}
+.segmentos.umbral {
+  margin-top: 0.5rem;
+}
+
+select {
+  font: inherit;
+  width: 100%;
+  min-height: var(--toque);
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--linea);
+  border-radius: var(--radio);
+  background: var(--lienzo);
+  color: inherit;
+}
+select:focus {
+  outline: 2px solid var(--verde);
+  outline-offset: -1px;
+}
+
+.tarjeta.series {
+  margin-bottom: 1.2rem;
+}
+.tarjeta.series .etiqueta {
+  align-self: flex-start;
+}
+
+.coords {
+  margin: 0.5rem 0 0;
+  font-size: 0.82rem;
+}
+.coords code {
+  font-size: 0.82rem;
+}
+
+.serie {
+  margin-top: 1.4rem;
+  border-top: 1px solid var(--linea);
+  padding-top: 1rem;
+}
+.serie h3,
+.fenologia h3 {
+  font-size: 1rem;
+  margin: 0 0 0.2rem;
+}
+.serie > p.tenue {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+}
+
+/* La fenología: doce columnas, una por mes, con la cuenta encima. Sin biblioteca de gráficas:
+   son doce números y un `flex`, y una dependencia más no cabe en el presupuesto del ADR §10. */
+.fenologia {
+  margin: 1rem 0 1.2rem;
+}
+.fenologia .barras {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  align-items: end;
+  gap: 3px;
+  height: 96px;
+  margin-top: 0.4rem;
+}
+.fenologia .mes {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  gap: 2px;
+}
+.fenologia .cuantas {
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--tenue);
+  line-height: 1;
+}
+.fenologia .tallo {
+  width: 100%;
+  min-height: 2px;
+  border-radius: 3px 3px 0 0;
+  background: var(--realce);
+}
+.fenologia .mes.con .tallo {
+  background: var(--verde);
+}
+.fenologia .inicial {
+  font-size: 0.7rem;
+  color: var(--tenue);
+  line-height: 1;
+}
+
+.puntos {
+  list-style: none;
+  margin: 0.6rem 0 0;
+  padding: 0;
+}
+.puntos li + li {
+  border-top: 1px solid var(--linea);
+}
+.puntos .fecha {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+.puntos .fecha small {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--tenue);
+  margin: 0;
+}
+.serie .ayuda {
+  margin-top: 1rem;
+}

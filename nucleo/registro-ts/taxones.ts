@@ -153,6 +153,11 @@ export async function buscarTaxones(bd: BaseDatos, texto: string, limite = 12): 
 
 export interface ConsultaSerie {
   readonly taxonKey: number;
+  /** El cuaderno de quien pregunta. Sin él, la serie mezcla los cuadernos que haya en el
+   * almacén: una observación de Elisa restaurada de su copia no es una observación mía, y
+   * sumarlas daría una serie que no es de nadie. Se deja opcional a propósito, para poder
+   * mirar el almacén entero desde el diagnóstico. */
+  readonly cuadernoId?: string;
   readonly latitud: number;
   readonly longitud: number;
   readonly radioM: number;
@@ -216,6 +221,7 @@ export async function serie(bd: BaseDatos, c: ConsultaSerie): Promise<PuntoSerie
        AND (? = 'cualquiera' OR i.identification_verification_status = 'accepted')
        AND (i.confianza IS NULL OR i.confianza >= ?)
        AND o.retractada = 0
+       AND (? IS NULL OR o.cuaderno_id = ?)
        AND o.decimal_latitude BETWEEN ? AND ?
        AND o.decimal_longitude BETWEEN ? AND ?
        AND (? IS NULL OR o.capturado_en >= ?)
@@ -225,6 +231,8 @@ export async function serie(bd: BaseDatos, c: ConsultaSerie): Promise<PuntoSerie
       c.taxonKey,
       c.estado,
       c.confianzaMinima ?? 0,
+      c.cuadernoId ?? null,
+      c.cuadernoId ?? null,
       c.latitud - dLat,
       c.latitud + dLat,
       c.longitud - dLon,
