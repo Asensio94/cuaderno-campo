@@ -611,6 +611,14 @@ tamaño, que hay que medir y no estimar.
   (`maplibre-gl-worker.mjs?worker&url` + `setWorkerUrl`), que además entra en el precache del
   trabajador de servicio y por tanto funciona en modo avión. Lo guarda
   `pruebas/test_worker_mapa.py`.
+- **Segundo fallo mudo, del mismo color.** La hoja de mapas guardados se devolvía en lugar del
+  mapa, y eso desmontaba el `div` del lienzo. Al cerrarla React montaba otro nodo, pero el efecto
+  que crea el mapa dependía solo del nombre del archivo —que no había cambiado—, así que no se
+  volvía a ejecutar: MapLibre seguía pegado a un contenedor fuera del documento y el hueco se
+  quedaba del color del fondo, sin `<canvas>` y sin error. Dos cambios: la hoja se pinta *encima*
+  (es fija y opaca) en vez de sustituir al mapa, y el contenedor vive en estado y es dependencia
+  del efecto, de modo que sustituirlo reconstruye el mapa en lugar de perderlo. Una `ref` no la
+  vigila ningún efecto: es la lección, no el detalle. Lo guarda `pruebas/test_worker_mapa.py`.
 
 ---
 

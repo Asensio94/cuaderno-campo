@@ -105,7 +105,11 @@ export function PantallaMapa({
   const [gestionando, setGestionando] = useState(false);
   const [tocado, setTocado] = useState<PuntoMapa | null>(null);
   const [fallo, setFallo] = useState<string | null>(null);
-  const caja = useRef<HTMLDivElement | null>(null);
+  // El contenedor va en estado, no en una `ref`, y es a propósito. Un efecto no se entera de que
+  // `ref.current` ha cambiado: si React sustituye el `div` —porque la pantalla se ha vuelto a
+  // montar— el efecto no se vuelve a ejecutar, el mapa se queda pegado a un nodo que ya no está en
+  // el documento y el hueco se queda del color del fondo para siempre, sin error. Pasó de verdad.
+  const [caja, setCaja] = useState<HTMLDivElement | null>(null);
   const mapa = useRef<MapaGl | null>(null);
 
   const recargar = async () => {
@@ -128,7 +132,7 @@ export function PantallaMapa({
 
   // --- Crear el mapa ------------------------------------------------------------------
   useEffect(() => {
-    if (elegido === null || caja.current === null) return;
+    if (elegido === null || caja === null) return;
     let vivo = true;
     let instancia: MapaGl | null = null;
     const oscuro = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -148,9 +152,9 @@ export function PantallaMapa({
         const ml = await import('maplibre-gl');
         await import('maplibre-gl/dist/maplibre-gl.css');
         ml.setWorkerUrl(urlObrero);
-        if (!vivo || caja.current === null) return;
+        if (!vivo) return;
         instancia = new ml.Map({
-          container: caja.current,
+          container: caja,
           style: estiloDe(elegido, oscuro),
           center: centro,
           zoom: puntos.length > 1 ? 12 : 14,
@@ -247,7 +251,7 @@ export function PantallaMapa({
       instancia?.remove();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [elegido?.nombre]);
+  }, [elegido?.nombre, caja]);
 
   // --- Los puntos y el GPS, que cambian sin volver a montar el mapa -------------------
   useEffect(() => {
@@ -283,8 +287,15 @@ export function PantallaMapa({
     );
   };
 
-  if (gestionando || (mapas !== null && elegido === null)) {
-    return (
+  // Sin mapas guardados no hay nada que enseñar: la hoja es la pantalla, y cerrarla cierra el
+  // mapa. Con mapas, la hoja se pinta *encima* (`.hoja` es fija y opaca, y va después en el
+  // documento), nunca en lugar del mapa. La diferencia no es estética: devolver la hoja aquí
+  // desmontaba el `div` del lienzo, y al volver el efecto de creación no se ejecutaba —su
+  // dependencia, el nombre del archivo, no había cambiado—, así que el mapa no volvía a aparecer
+  // hasta cerrar y abrir la pantalla. Con el contenedor en estado ya se reconstruiría solo, pero
+  // reconstruir el mapa por asomarse a la lista de archivos es tirar el trabajo hecho.
+  const hojaMapas =
+    gestionando || (mapas !== null && elegido === null) ? (
       <HojaMapas
         mapas={mapas}
         elegido={nombre}
@@ -295,8 +306,7 @@ export function PantallaMapa({
         recargar={recargar}
         cerrar={mapas !== null && elegido === null ? cerrar : () => setGestionando(false)}
       />
-    );
-  }
+    ) : null;
 
   return (
     <div className="hoja mapa" role="dialog" aria-label={titulo}>
@@ -314,7 +324,7 @@ export function PantallaMapa({
           <Icono n="cerrar" />
         </button>
       </header>
-      <div className="lienzo-mapa" ref={caja} />
+      <div className="lienzo-mapa" ref={setCaja} />
       <div className="mapa-encima">
         <div className="mapa-gps">
           <Gps gps={gps} />
@@ -349,6 +359,7 @@ export function PantallaMapa({
           <Aviso tono="mal">{fallo}</Aviso>
         </div>
       )}
+      {hojaMapas}
     </div>
   );
 }

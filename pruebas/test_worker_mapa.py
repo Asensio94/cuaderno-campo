@@ -68,3 +68,42 @@ def test_el_fichero_del_worker_existe_con_ese_nombre() -> None:
     Se cae al construir, que es donde toca: mejor un error de Vite que un mapa en blanco.
     """
     assert (DIST_MAPLIBRE / "maplibre-gl-worker.mjs").is_file()
+
+
+def test_el_contenedor_del_mapa_esta_en_estado_y_es_dependencia_del_efecto() -> None:
+    """Un `div` sustituido con la `ref` en un `useRef` deja el mapa colgando de un nodo muerto.
+
+    El efecto que crea el mapa se dispara con el nombre del archivo. Si React vuelve a montar la
+    pantalla —o solo el `div`—, el nombre no ha cambiado, el efecto no se ejecuta y `ref.current`
+    apunta a un elemento nuevo y vacío mientras el mapa sigue pegado al viejo, ya fuera del
+    documento. En pantalla: el hueco del lienzo del color del fondo, cero `<canvas>` en el
+    documento, consola limpia. Con el nodo en estado y en la lista de dependencias, cambiarlo
+    reconstruye el mapa en lugar de perderlo.
+    """
+    fuente = _fuente()
+    assert "const [caja, setCaja] = useState<HTMLDivElement | null>(null);" in fuente, (
+        "el contenedor del mapa tiene que vivir en estado, no en useRef: un efecto no observa "
+        "los cambios de ref.current"
+    )
+    assert 'ref={setCaja}' in fuente, "el div del lienzo tiene que registrar el nodo con setCaja"
+    assert re.search(r"\}, \[elegido\?\.nombre, caja\]\);", fuente) is not None, (
+        "el efecto que crea el mapa tiene que depender también del nodo contenedor"
+    )
+
+
+def test_la_hoja_de_mapas_se_pinta_encima_y_no_en_lugar_del_mapa() -> None:
+    """Devolver la hoja de archivos antes del mapa desmontaba el lienzo y no volvía.
+
+    Con `return <HojaMapas/>` a mitad del componente, asomarse a la lista de mapas guardados
+    quitaba del documento el `div` del lienzo; al cerrarla React montaba uno nuevo y el efecto de
+    creación no se ejecutaba. El mapa no reaparecía hasta cerrar y abrir la pantalla. La hoja es
+    fija y opaca, así que va después en el documento, encima, y el mapa sobrevive debajo.
+    """
+    fuente = _fuente()
+    assert "return (\n      <HojaMapas" not in fuente, (
+        "HojaMapas no puede devolverse en lugar del mapa: eso desmonta el contenedor"
+    )
+    assert "{hojaMapas}" in fuente, "la hoja de mapas tiene que pintarse dentro del árbol del mapa"
+    assert fuente.index("ref={setCaja}") < fuente.index("{hojaMapas}"), (
+        "la hoja va después del lienzo en el documento para quedar encima sin desmontarlo"
+    )
