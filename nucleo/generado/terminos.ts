@@ -975,6 +975,15 @@ export const REGISTRO: Registro = {
           "derivado": false
         },
         {
+          "termino": "dwc:occurrenceID",
+          "columna": "occurrence_id",
+          "tipo": "texto",
+          "clave": false,
+          "requerido": false,
+          "exportar": true,
+          "derivado": true
+        },
+        {
           "termino": "dwc:eventID",
           "columna": "event_id",
           "tipo": "texto",

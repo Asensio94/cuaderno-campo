@@ -214,10 +214,15 @@ tabla = "proy_senal"
 papel = "extension"
 uri = "http://rs.tdwg.org/dwc/terms/MeasurementOrFact"
 fichero = "measurementorfact.txt"
-enlace = "dwc:eventID"
+# El núcleo del archivo es Occurrence, así que `coreid` tiene que ser un occurrenceID: una
+# extensión colgada de eventID sería inválida (ADR §15.13). La señal se registra sobre el medio
+# (cdc:medioID) y la salida; la ocurrencia a la que pertenece es la del medio, y se deriva al
+# exportar. Si el medio se desadjunta, sus señales dejan de exportarse con él.
+enlace = "dwc:occurrenceID"
 campos = [
   { termino = "cdc:senalID", tipo = "texto", clave = true },
   { termino = "cdc:cuadernoID", tipo = "texto", requerido = true, indice = true, exportar = false },
+  { termino = "dwc:occurrenceID", tipo = "texto", derivado = true, nota = "la ocurrencia del medio (proy_medio.occurrence_id), calculada al exportar" },
   { termino = "dwc:eventID", tipo = "texto", requerido = true, indice = true },
   { termino = "cdc:medioID", tipo = "texto", requerido = true, indice = true, exportar = false },
   { termino = "dwc:measurementType", tipo = "texto", requerido = true, nota = "acousticDetection:antropofonia | :geofonia" },

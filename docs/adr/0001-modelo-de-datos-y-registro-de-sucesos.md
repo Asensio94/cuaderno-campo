@@ -520,10 +520,12 @@ restricción sin prueba es una intención.
 | `meta.xml`, `eml.xml` | generados desde `terminos.toml` |
 
 Las señales de `antropofonia` y `geofonia` salen como filas de MeasurementOrFact colgadas de la
-salida: `measurementType` = `acousticDetection:antropofonia`, `measurementValue` = etiqueta
-literal, `measurementMethod` = `BirdNET <versión de los pesos>`, `measurementDeterminedDate` =
-instante de inferencia. Con eso el archivo sigue validando y la señal viaja con el dato en vez
-de quedarse encerrada en el cuaderno.
+**ocurrencia del medio en que se detectaron** (no de la salida: con núcleo Occurrence el `coreid`
+tiene que ser un `occurrenceID`, véase §15.13): `measurementType` =
+`acousticDetection:antropofonia`, `measurementValue` = etiqueta literal, `measurementMethod` =
+`BirdNET <versión de los pesos>`, `measurementDeterminedDate` = instante de inferencia. Con eso
+el archivo sigue validando y la señal viaja con el dato en vez de quedarse encerrada en el
+cuaderno.
 
 Núcleo Occurrence, no Event, con los campos de la salida desnormalizados en cada fila. Razón:
 el núcleo Event (basado en muestra) está pensado para muestreo estructurado con datos de
@@ -541,10 +543,12 @@ fluvial y vegetación vas a querer escalas de cobertura (Braun-Blanquet) y no en
 
 Sin librería: `zipfile` más `xml.etree` de la biblioteca estándar. Cero dependencias.
 
-Decisión pendiente: **qué va en `scientificName` de una ocurrencia sin identificar**. GBIF
-espera algo. Opciones: el rango más alto conocido con confianza (`Aves`), `incertae sedis`, o
-excluirla del archivo. Mi recomendación: rango más alto conocido, y excluir del archivo solo si
-no hay ni eso.
+Decidido (§14.2, implementado en §15.14): **una ocurrencia sin determinación aceptada no sale
+del cuaderno**. El «rango más alto conocido» no es un dato que el registro tenga por su cuenta;
+es una determinación, y como tal la acepta el observador (por ejemplo `Aves`, rango `class`) y
+viaja con su `taxonRank`. Si una hipótesis del modelo no está resuelta contra GBIF, el núcleo
+lleva el `verbatimIdentification` en `scientificName` y `taxonRank` vacío, para que GBIF intente
+la correspondencia con el literal.
 
 ---
 
@@ -648,10 +652,11 @@ cuaderno-campo/
 | I0 ✔ | `terminos.toml`, generadores y migraciones | DDL generado idéntico al comprometido |
 | I1 ✔ | Registro, HLC y pliegue en ambos lenguajes | P1-P4, aislamiento entre cuadernos (§4.6), conformidad entre lenguajes |
 | I2a ~ | Almacén SQLite y captura: nota, foto, GPS | convergencia de los tres caminos de proyección (§15.11) ✔ y una salida real en el Pas |
-| I2b | Audio: `MediaRecorder`, cola de inferencia sin inferir | audio grabado y encolado, recuperado tras cerrar la aplicación |
+| I2b ✔ | Audio: grabación WAV, cola de inferencia sin inferir | audio grabado y encolado, recuperado tras cerrar la aplicación |
 | I3 | Mapa offline: PMTiles en OPFS, descarga reanudable, política de cuota | presupuesto de tamaño medido, no estimado |
-| I4 | Consulta de series con subárbol local, por taxón y por sitio | series conocidas, clausura taxonómica |
-| I5 | Exportación DwC-A | validador de GBIF más prueba de fuga de EXIF |
+| I4 ~ | Consulta de series con subárbol local, por taxón y por sitio | series conocidas, clausura taxonómica ✔ (núcleo TS); falta la pantalla |
+| I5 ✔ | Exportación DwC-A (§15.14) | estructura contra `meta.xml`, fuga de EXIF ✔; validador de GBIF, paso manual (403 a la API anónima) |
+| I7 ✔ | Copia de seguridad: ZIP con el registro y los medios (§15.12) | ida y vuelta entre lenguajes, restauración idempotente |
 | I6 | Trabajador BirdNET, cola en PostgreSQL, clases de etiqueta | audio de oro con hipótesis y señales esperadas; ninguna etiqueta sin clase |
 
 I0 e I1 son el 70 % del valor y todo el riesgo: son la única parte que, mal hecha, obliga a
@@ -1146,6 +1151,76 @@ Lo que **no** está comprobado es el GPS de verdad. El panel del portátil denie
 geolocalización, así que el camino de escritura se probó con un simulacro y lo que falta es una
 salida real: precisión bajo hayedo, tiempo hasta el primer arreglo, y qué hace la aplicación
 cuando Android la duerme con la pantalla apagada.
+
+### 15.12 La copia de seguridad es el registro, empaquetado
+
+Con un solo teléfono y sin servidor, el teléfono es el único sitio donde están los datos, y eso
+no es aceptable ni una semana. La salida es un fichero que cabe en la hoja de compartir de
+Android (Drive, cable, correo): un ZIP con `manifiesto.json`, `sucesos.jsonl` (un sobre completo
+del §4.1 por línea, en orden de registro) y `medios/<sha256>`; formato `cdc-copia`, versión 1,
+sin ZIP64 ni cifrado, en STORE (los medios ya están comprimidos y el JSONL es pequeño). El
+JSONL es exactamente el corpus de conformidad, así que todo lo que lee uno lee el otro.
+
+Restaurar no es un modo: es `anadir`. Idempotente por P3, con la cadena de `seq` comprobada,
+sin mezclar cuadernos por §4.6. Un aparato vacío que restaura una copia con un solo cuaderno lo
+adopta con un **identificador de dispositivo nuevo**: reutilizar el viejo produciría dos aparatos
+firmando la misma secuencia. El ZIP se lee y escribe a mano en TypeScript (`zip.ts`, ~250 líneas,
+STORE al escribir, STORE y DEFLATE al leer con `DecompressionStream`) porque una librería de ZIP
+no está en §10 y no hacía falta.
+
+### 15.13 El enlace de MeasurementOrFact es `occurrenceID`, no `eventID`
+
+El §8 colgaba las señales acústicas de la salida (`enlace = "dwc:eventID"`). Con núcleo
+Occurrence eso es inválido: el `coreid` de toda extensión tiene que ser el identificador de una
+fila del núcleo, y un `eventID` no lo es. El validador de GBIF habría rechazado el archivo, o peor,
+lo habría aceptado con todas las señales huérfanas.
+
+La señal se registra sobre el medio (`cdc:medioID`) y la salida, como antes: el trabajador de
+BirdNET no sabe ni tiene que saber de ocurrencias. La ocurrencia es la del medio, y se **deriva
+al exportar** (`dwc:occurrenceID` es un campo `derivado` de MeasurementOrFact, §15.3). Si el medio
+se desadjunta, sus señales dejan de salir con él. `eventID` sigue exportándose como columna
+normal, que es lo que sirve para agrupar por salida.
+
+### 15.14 El exportador Darwin Core: decisiones
+
+*Se exporta la proyección, no el registro.* `nucleo/exportar/dwca.py` recibe una `Proyeccion`
+(la del almacén o la del pliegue en memoria de una copia) y una función `medio(hash) -> bytes`.
+No sabe de SQLite ni de ficheros; el CLI (`python -m nucleo.exportar`) abre copias y almacenes.
+Las columnas y su orden salen de `Clase.exportables` (§15.4), el `meta.xml` del archivo es el
+generado, y la prueba comprueba que cada fichero tiene exactamente los campos que declara el
+descriptor, en su orden, y que todo `coreid` apunta a una fila del núcleo. El validador de GBIF
+devuelve 403 a las llamadas anónimas, así que la validación en gbif.org es un paso manual.
+
+*Qué sale.* Ocurrencias del cuaderno, no retractadas, con determinación aceptada (§14.2). Todas
+las identificaciones de esas ocurrencias, aceptadas o no: el historial es la extensión. Medios
+adjuntos, y señales de medios adjuntos. Un archivo por cuaderno; los demás cuadernos de la
+proyección se ignoran, no se mezclan.
+
+*La política de sensibilidad se aplica aquí, y se describe.* `difuso_1km` y `difuso_10km` mueven
+la coordenada al centro de la celda de una malla de 0,01° y 0,1°, ponen `coordinateUncertaintyInMeters`
+al radio nominal (1000 / 10000 m), vacían altitudes y elevación y truncan `cdc:capturadoEn` y
+`dcterms:created` al día; lo dicen en `dataGeneralizations`. `retenido` vacía posición, datum,
+incertidumbre y altitudes, trunca igual, y lo dice en `informationWithheld`. El literal de la
+política no viaja: se prueba que ni «difuso», ni «retenido», ni la coordenada exacta aparecen en
+ningún fichero del archivo. Y la proyección de entrada no se muta: el dato local no se toca.
+
+*Los metadatos incrustados se quitan siempre, sin mirar la política.* El §1.2 pedía sanear el
+EXIF «según la política». Es más estricto: el exportador quita **enteros** los segmentos APP1
+(Exif, XMP) y APP13 (IPTC) de todo JPEG que sale, y los chunks `eXIf`/`tEXt`/`zTXt`/`iTXt` de todo
+PNG. No hay nada en el EXIF que las columnas del archivo no digan ya, y reescribir el bloque campo
+a campo para conservar «lo inofensivo» sería más código y una superficie de error nueva. Un
+fichero cuyo contenido no da su hash no se incluye y se informa; lo mismo con una imagen en un
+formato que no se sabe sanear. El WAV pasa tal cual. El EXIF local sigue íntegro.
+
+*Licencia por defecto CC BY-NC 4.0.* GBIF admite CC0, CC BY y CC BY-NC. Se elige la más
+restrictiva de las tres por coherencia con el resto del proyecto; el observador la relaja con
+`--licencia`. Es una elección mía, por delegación, y está en la lista de decisiones que revisar.
+
+*Señales: el `measurementType` del corpus dice «etiqueta BirdNET».* Debería ser
+`acousticDetection:<clase>` como fija el §8; se corrige en el trabajador de BirdNET (I6), que es
+quien emite `senal.detectada`, y el corpus se regenera entonces.
+
+---
 
 ## 17. La interfaz de campo
 

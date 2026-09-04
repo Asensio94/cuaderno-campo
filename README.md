@@ -105,13 +105,46 @@ piezas:
 Las observaciones son datos propios y se exportan como **Darwin Core Archive**, que es lo que
 entienden GBIF y iNaturalist.
 
+## Copia de seguridad y exportación
+
+Con un solo teléfono, los datos están en un solo sitio. La pantalla de inicio tiene **Guardar
+copia**: un ZIP con el registro completo (`sucesos.jsonl`) y los medios por su SHA-256, que sale
+por la hoja de compartir (Drive, cable). **Restaurar…** lee esa copia, o un JSONL suelto, y la
+ingesta es la normal: idempotente, con la cadena de secuencia comprobada. Un teléfono nuevo
+adopta el cuaderno de la copia con un identificador de dispositivo propio.
+
+El Darwin Core Archive se genera en el ordenador, desde una copia o desde un almacén SQLite:
+
+```bash
+python -m nucleo.exportar copia.zip archivo-dwca.zip
+```
+
+Opciones: `--cuaderno ID` (si la copia trae varios), `--titulo`, `--licencia` (`CC0-1.0`,
+`CC-BY-4.0`, `CC-BY-NC-4.0`, por defecto la última), `--sin-medios`, y `--medios DIR` para un
+almacén SQLite cuyos ficheros estén en un directorio por hash (el que escribe
+`python -m nucleo.registro.copia restaurar`).
+
+Qué contiene: solo las ocurrencias **con determinación aceptada** y no retractadas; todas sus
+identificaciones (aceptadas o no) en la extensión Identification History; medios adjuntos y
+señales acústicas. La política de sensibilidad se aplica al exportar y nunca al dato local:
+`difuso_1km` / `difuso_10km` generalizan la coordenada a una malla y lo declaran en
+`dataGeneralizations`; `retenido` la omite y lo declara en `informationWithheld`. Todo JPEG o PNG
+que sale va sin EXIF, XMP ni IPTC. El EXIF local queda intacto.
+
+**Validación en GBIF, paso manual.** La API del validador responde 403 a las llamadas anónimas,
+así que las pruebas comprueban la estructura (columnas contra `meta.xml`, enlaces al núcleo) y el
+archivo se sube a mano a <https://www.gbif.org/tools/data-validator> antes de publicarlo.
+
 ## Estado
 
 Fase 0, en curso.
 
 Hecho: modelo de datos y registro de sucesos con sus invariantes; almacén en Python y su gemelo en
-TypeScript sobre wa-sqlite/OPFS; captura de nota, foto, GPS y hora con zona; enmienda,
-retractación y política de sensibilidad; interfaz de campo instalable.
+TypeScript sobre wa-sqlite/OPFS; captura de nota, foto, audio (WAV) con su cola, GPS y hora con
+zona; enmienda, retractación y política de sensibilidad; determinación humana con el subárbol de
+Aves de GBIF en local; consulta de series (taxón × radio × ventana temporal) en el núcleo; copia
+de seguridad y restauración; exportación Darwin Core Archive con saneado de metadatos; interfaz
+de campo instalable.
 
-Pendiente: audio y su cola; mapa sin conexión; consulta de series (taxón × radio × ventana
-temporal); exportación DwC-A verificada contra el validador de GBIF; el trabajador de BirdNET.
+Pendiente: pantalla de series; mapa sin conexión; el trabajador de BirdNET; validar un archivo
+real en gbif.org.

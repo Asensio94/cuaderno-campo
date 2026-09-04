@@ -81,13 +81,14 @@
       <location>measurementorfact.txt</location>
     </files>
     <coreid index="0" />
-    <field index="0" term="http://rs.tdwg.org/dwc/terms/eventID" />
+    <field index="0" term="http://rs.tdwg.org/dwc/terms/occurrenceID" />
     <field index="1" term="https://cuaderno.local/terms/senalID" />
-    <field index="2" term="http://rs.tdwg.org/dwc/terms/measurementType" />
-    <field index="3" term="http://rs.tdwg.org/dwc/terms/measurementValue" />
-    <field index="4" term="https://cuaderno.local/terms/confianza" />
-    <field index="5" term="https://cuaderno.local/terms/desplazamientoSegundos" />
-    <field index="6" term="http://rs.tdwg.org/dwc/terms/measurementMethod" />
-    <field index="7" term="http://rs.tdwg.org/dwc/terms/measurementDeterminedDate" />
+    <field index="2" term="http://rs.tdwg.org/dwc/terms/eventID" />
+    <field index="3" term="http://rs.tdwg.org/dwc/terms/measurementType" />
+    <field index="4" term="http://rs.tdwg.org/dwc/terms/measurementValue" />
+    <field index="5" term="https://cuaderno.local/terms/confianza" />
+    <field index="6" term="https://cuaderno.local/terms/desplazamientoSegundos" />
+    <field index="7" term="http://rs.tdwg.org/dwc/terms/measurementMethod" />
+    <field index="8" term="http://rs.tdwg.org/dwc/terms/measurementDeterminedDate" />
   </extension>
 </archive>
