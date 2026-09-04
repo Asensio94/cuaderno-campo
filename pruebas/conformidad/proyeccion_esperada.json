@@ -1,0 +1,253 @@
+{
+  "proy_cuaderno": {
+    "cuaderno-elisa": {
+      "cdc:cuadernoID": "cuaderno-elisa",
+      "cdc:nombre": "Cuaderno de Elisa — Pas y Ubiña",
+      "cdc:politicaPublicacion": "generalizado",
+      "dwc:recordedBy": "Elisa"
+    },
+    "cuaderno-pablo": {
+      "cdc:cuadernoID": "cuaderno-pablo",
+      "cdc:nombre": "Cuaderno de campo de Pablo",
+      "cdc:politicaPublicacion": "privado",
+      "dwc:recordedBy": "Pablo Fernández"
+    }
+  },
+  "proy_identificacion": {
+    "2241364e-52af-49a9-8ea1-38270906e89e": {
+      "cdc:confianza": 0.0917,
+      "cdc:cuadernoID": "cuaderno-pablo",
+      "cdc:modeloVersion": "2.4",
+      "dwc:dateIdentified": "2025-08-24T20:02:11+02:00",
+      "dwc:identificationID": "2241364e-52af-49a9-8ea1-38270906e89e",
+      "dwc:identificationVerificationStatus": "unverified",
+      "dwc:identifiedBy": "birdnet-analyzer",
+      "dwc:occurrenceID": "bfdf9e5f-f106-49c5-8109-231b467375eb",
+      "dwc:verbatimIdentification": "Troglodytes troglodytes_Eurasian Wren"
+    },
+    "8d164235-6eb0-41f8-8544-1da2c1b18fe4": {
+      "cdc:confianza": 0.0311,
+      "cdc:cuadernoID": "cuaderno-pablo",
+      "cdc:modeloVersion": "2.4",
+      "dwc:identificationID": "8d164235-6eb0-41f8-8544-1da2c1b18fe4",
+      "dwc:identificationRemarks": "el reclamo es de petirrojo, no de curruca",
+      "dwc:identificationVerificationStatus": "rejected",
+      "dwc:identifiedBy": "birdnet-analyzer",
+      "dwc:occurrenceID": "bfdf9e5f-f106-49c5-8109-231b467375eb",
+      "dwc:verbatimIdentification": "Sylvia atricapilla_Eurasian Blackcap"
+    },
+    "c54c265e-9a17-44d7-8f11-92d6b19eaba6": {
+      "cdc:confianza": 0.8412,
+      "cdc:cuadernoID": "cuaderno-pablo",
+      "cdc:gbifTaxonKey": 2492457,
+      "cdc:modeloVersion": "2.4",
+      "cdc:topK": [
+        {
+          "confianza": 0.8412,
+          "etiqueta": "Erithacus rubecula_European Robin"
+        },
+        {
+          "confianza": 0.0917,
+          "etiqueta": "Troglodytes troglodytes_Eurasian Wren"
+        },
+        {
+          "confianza": 0.0311,
+          "etiqueta": "Sylvia atricapilla_Eurasian Blackcap"
+        }
+      ],
+      "cdc:versionArbolGbif": "2025-08-01",
+      "dwc:dateIdentified": "2025-08-24T20:02:11+02:00",
+      "dwc:identificationID": "c54c265e-9a17-44d7-8f11-92d6b19eaba6",
+      "dwc:identificationVerificationStatus": "accepted",
+      "dwc:identifiedBy": "birdnet-analyzer",
+      "dwc:occurrenceID": "bfdf9e5f-f106-49c5-8109-231b467375eb",
+      "dwc:scientificName": "Erithacus rubecula",
+      "dwc:taxonID": "https://www.gbif.org/species/2492457",
+      "dwc:taxonRank": "species",
+      "dwc:verbatimIdentification": "Erithacus rubecula_European Robin"
+    }
+  },
+  "proy_medio": {
+    "2b5ff385-c8ce-46e6-8c07-eb65c585ef95": {
+      "cdc:bytes": 2880044,
+      "cdc:cuadernoID": "cuaderno-pablo",
+      "cdc:desadjuntado": true,
+      "cdc:hashSha256": "d9bfb6a33f86e36980c6bb0fdd4855a447ef873565b9646b32f74aaa1e82cdd1",
+      "cdc:medioID": "2b5ff385-c8ce-46e6-8c07-eb65c585ef95",
+      "cdc:rutaLocal": "opfs://audio/2025-08-24T05-18-40Z.wav",
+      "dc:type": "Sound",
+      "dcterms:format": "audio/wav",
+      "dwc:occurrenceID": "bfdf9e5f-f106-49c5-8109-231b467375eb"
+    }
+  },
+  "proy_nota": {
+    "d2192763-12e4-4cf2-81b0-db299ae85642": {
+      "cdc:cuadernoID": "cuaderno-pablo",
+      "cdc:cuerpoMarkdown": "Prado recién segado; el seto del norte, intacto. Dos petirrojos cantando a la vez desde extremos opuestos.",
+      "cdc:notaID": "d2192763-12e4-4cf2-81b0-db299ae85642",
+      "cdc:retractada": false,
+      "dwc:eventID": "adebb137-1fc0-4343-8fb2-f98b83f90542"
+    },
+    "d65c5fc9-53ce-4e58-8c4f-2733581eb9f2": {
+      "cdc:cuadernoID": "cuaderno-pablo",
+      "cdc:cuerpoMarkdown": "Comprobar el caudal en la estación de aforo.",
+      "cdc:notaID": "d65c5fc9-53ce-4e58-8c4f-2733581eb9f2",
+      "cdc:retractada": true,
+      "dwc:eventID": "adebb137-1fc0-4343-8fb2-f98b83f90542"
+    }
+  },
+  "proy_ocurrencia": {
+    "0f245534-3699-452c-8b1f-e0ca2a450e98": {
+      "cdc:capturadoEn": "2025-08-24T07:52:00+02:00",
+      "cdc:cuadernoID": "cuaderno-pablo",
+      "cdc:motivoRetractacion": "era la misma bandada ya anotada 40 m antes",
+      "cdc:politicaSensibilidad": "publico",
+      "cdc:retractada": true,
+      "dwc:basisOfRecord": "HumanObservation",
+      "dwc:coordinateUncertaintyInMeters": 9.0,
+      "dwc:decimalLatitude": 43.1471,
+      "dwc:decimalLongitude": -3.9362,
+      "dwc:eventID": "adebb137-1fc0-4343-8fb2-f98b83f90542",
+      "dwc:geodeticDatum": "WGS84",
+      "dwc:individualCount": 3,
+      "dwc:occurrenceID": "0f245534-3699-452c-8b1f-e0ca2a450e98",
+      "dwc:recordedBy": "Pablo Fernández"
+    },
+    "4087cdc9-7a51-4a8d-8f98-174e6b64de3c": {
+      "cdc:capturadoEn": "2025-08-24T07:29:15+02:00",
+      "cdc:cuadernoID": "cuaderno-elisa",
+      "cdc:politicaSensibilidad": "difuso_1km",
+      "cdc:retractada": false,
+      "dwc:basisOfRecord": "HumanObservation",
+      "dwc:coordinateUncertaintyInMeters": 4.0,
+      "dwc:decimalLatitude": 43.14701,
+      "dwc:decimalLongitude": -3.93588,
+      "dwc:eventID": "199e578e-ae3e-47d5-8f76-f5d2280d04d7",
+      "dwc:geodeticDatum": "WGS84",
+      "dwc:individualCount": 11,
+      "dwc:lifeStage": "flowering",
+      "dwc:occurrenceID": "4087cdc9-7a51-4a8d-8f98-174e6b64de3c",
+      "dwc:recordedBy": "Elisa"
+    },
+    "ae4fbd93-9d1e-478c-8346-e3c45a70a803": {
+      "cdc:capturadoEn": "2025-08-24T08:05:44+02:00",
+      "cdc:cuadernoID": "cuaderno-pablo",
+      "cdc:politicaSensibilidad": "publico",
+      "cdc:retractada": false,
+      "dwc:basisOfRecord": "HumanObservation",
+      "dwc:coordinateUncertaintyInMeters": 7.0,
+      "dwc:decimalLatitude": 43.14812,
+      "dwc:decimalLongitude": -3.93901,
+      "dwc:eventID": "adebb137-1fc0-4343-8fb2-f98b83f90542",
+      "dwc:geodeticDatum": "WGS84",
+      "dwc:individualCount": 1,
+      "dwc:occurrenceID": "ae4fbd93-9d1e-478c-8346-e3c45a70a803",
+      "dwc:recordedBy": "Pablo Fernández"
+    },
+    "bac40482-153a-4dc2-874e-47937dfc0865": {
+      "cdc:capturadoEn": "2025-08-24T08:41:02+02:00",
+      "cdc:cuadernoID": "cuaderno-pablo",
+      "cdc:politicaSensibilidad": "difuso_10km",
+      "cdc:retractada": false,
+      "dwc:basisOfRecord": "HumanObservation",
+      "dwc:behavior": "adulto cebando en nido ocupado",
+      "dwc:coordinateUncertaintyInMeters": 25.0,
+      "dwc:decimalLatitude": 43.15104,
+      "dwc:decimalLongitude": -3.94402,
+      "dwc:eventID": "adebb137-1fc0-4343-8fb2-f98b83f90542",
+      "dwc:geodeticDatum": "WGS84",
+      "dwc:individualCount": 2,
+      "dwc:occurrenceID": "bac40482-153a-4dc2-874e-47937dfc0865",
+      "dwc:occurrenceRemarks": "Nido en cortado calizo, ladera sur.",
+      "dwc:recordedBy": "Pablo Fernández"
+    },
+    "bfdf9e5f-f106-49c5-8109-231b467375eb": {
+      "cdc:altitudGpsElipsoidal": 412.7,
+      "cdc:altitudGpsExactitud": 14.0,
+      "cdc:capturadoEn": "2025-08-24T07:18:40+02:00",
+      "cdc:cuadernoID": "cuaderno-pablo",
+      "cdc:politicaSensibilidad": "publico",
+      "cdc:retractada": false,
+      "dwc:basisOfRecord": "HumanObservation",
+      "dwc:behavior": "canto desde seto",
+      "dwc:coordinateUncertaintyInMeters": 6.0,
+      "dwc:decimalLatitude": 43.14662,
+      "dwc:decimalLongitude": -3.93511,
+      "dwc:eventID": "adebb137-1fc0-4343-8fb2-f98b83f90542",
+      "dwc:geodeticDatum": "WGS84",
+      "dwc:individualCount": 1,
+      "dwc:occurrenceID": "bfdf9e5f-f106-49c5-8109-231b467375eb",
+      "dwc:recordedBy": "Pablo Fernández"
+    }
+  },
+  "proy_salida": {
+    "199e578e-ae3e-47d5-8f76-f5d2280d04d7": {
+      "cdc:cerrada": false,
+      "cdc:cuadernoID": "cuaderno-elisa",
+      "cdc:salidaCompartidaID": "baa3f556-8139-4f44-8248-9b8155653125",
+      "cdc:zonaHoraria": "Europe/Madrid",
+      "dwc:eventDate": "2025-08-24T07:15:00+02:00",
+      "dwc:eventID": "199e578e-ae3e-47d5-8f76-f5d2280d04d7",
+      "dwc:locality": "Vega del Pas"
+    },
+    "adebb137-1fc0-4343-8fb2-f98b83f90542": {
+      "cdc:cerrada": true,
+      "cdc:coberturaRecorrido": 0.83,
+      "cdc:cuadernoID": "cuaderno-pablo",
+      "cdc:recorrido": [
+        {
+          "exactitud": 8,
+          "lat": 43.1461,
+          "lon": -3.9342,
+          "t": "2025-08-24T07:15:04+02:00"
+        },
+        {
+          "exactitud": 6,
+          "lat": 43.1466,
+          "lon": -3.9351,
+          "t": "2025-08-24T07:18:31+02:00"
+        },
+        {
+          "exactitud": 11,
+          "lat": 43.147,
+          "lon": -3.936,
+          "t": "2025-08-24T07:24:02+02:00"
+        }
+      ],
+      "cdc:salidaCompartidaID": "baa3f556-8139-4f44-8248-9b8155653125",
+      "cdc:zonaHoraria": "Europe/Madrid",
+      "dwc:eventDate": "2025-08-24T07:15:00+02:00",
+      "dwc:eventID": "adebb137-1fc0-4343-8fb2-f98b83f90542",
+      "dwc:eventRemarks": "Niebla baja hasta las 08:30; escucha buena, visión corta.",
+      "dwc:locality": "Vega del Pas",
+      "dwc:locationID": "3bd0281a-cacd-4b00-8495-059dfec017a5",
+      "dwc:samplingProtocol": "recorrido a pie, escucha y observación"
+    }
+  },
+  "proy_senal": {
+    "3d7d2737-ba27-454f-8dd8-917f96575b61": {
+      "cdc:claseEtiqueta": "antropofonia",
+      "cdc:confianza": 0.6033,
+      "cdc:cuadernoID": "cuaderno-pablo",
+      "cdc:desplazamientoSegundos": 12.0,
+      "cdc:medioID": "2b5ff385-c8ce-46e6-8c07-eb65c585ef95",
+      "cdc:senalID": "3d7d2737-ba27-454f-8dd8-917f96575b61",
+      "dwc:eventID": "adebb137-1fc0-4343-8fb2-f98b83f90542",
+      "dwc:measurementMethod": "birdnet-analyzer 2.4",
+      "dwc:measurementType": "etiqueta BirdNET",
+      "dwc:measurementValue": "Engine_Engine"
+    }
+  },
+  "proy_sitio": {
+    "3bd0281a-cacd-4b00-8495-059dfec017a5": {
+      "cdc:cuadernoID": "cuaderno-pablo",
+      "cdc:notas": "El prado se siega a primeros de julio; en agosto ya ha rebrotado.",
+      "cdc:radioMetros": 400.0,
+      "dwc:decimalLatitude": 43.1461,
+      "dwc:decimalLongitude": -3.9342,
+      "dwc:habitat": "prado de siega con setos de avellano",
+      "dwc:locality": "Vega del Pas, prados de siega",
+      "dwc:locationID": "3bd0281a-cacd-4b00-8495-059dfec017a5"
+    }
+  }
+}

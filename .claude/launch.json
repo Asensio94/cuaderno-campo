@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "cuaderno",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "desarrollo", "--", "--port", "5173", "--strictPort"],
+      "port": 5173
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+# Publica el cuaderno en GitHub Pages.
+#
+# El despliegue va detras de las comprobaciones a proposito: la aplicacion se instala en un
+# telefono que se lleva al monte, y una version rota alli no se arregla con una recarga.
+name: Pages
+
+on:
+  push:
+    branches: [principal]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Un despliegue a la vez; si llegan dos empujones seguidos, gana el ultimo sin cancelar el que
+# ya esta a medio subir.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  construir:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run tipos
+      - run: npm run prueba
+      - run: npm run construir
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  desplegar:
+    needs: construir
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.despliegue.outputs.page_url }}
+    steps:
+      - id: despliegue
+        uses: actions/deploy-pages@v4

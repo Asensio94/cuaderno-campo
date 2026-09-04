@@ -1,0 +1,38 @@
+// Lo que comprueba `npm run tipos`: exactamente lo que va al teléfono.
+//
+// Fuera quedan dos cosas, a propósito:
+//
+//   - Los ficheros del núcleo que solo existen en Node (`sqlite-node.ts`, las pruebas). Traen
+//     `node:sqlite`, `node:test`, `node:fs`, y comprobarlos aquí obligaría a instalar
+//     `@types/node`, un paquete más para tipar lo que el móvil no ejecuta nunca.
+//   - `vite.config.ts`, por lo mismo: los tipos de Vite y del plugin de PWA son tipos de
+//     servidor y arrastran Node entero.
+//
+// El trabajador va aparte, en `tsconfig.worker.json`: `DOM` y `WebWorker` declaran los mismos
+// globales con distinta forma y no se pueden tener las dos en el mismo proyecto.
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noEmit": true,
+    "types": ["vite/client"]
+  },
+  "include": ["src", "../nucleo/registro-ts"],
+  "exclude": [
+    "src/almacen/worker.ts",
+    "../nucleo/registro-ts/sqlite-node.ts",
+    "../nucleo/registro-ts/**/*.test.ts",
+    "../nucleo/registro-ts/**/*.pruebas.ts"
+  ]
+}

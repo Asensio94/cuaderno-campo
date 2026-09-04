@@ -1,0 +1,840 @@
+/* Legible con el sol de cara y con guantes.
+   Reglas, no gustos:
+     - Contraste alto y nada de gris claro sobre blanco.
+     - Objetivos de toque de 52 px, y la acción principal abajo, donde llega el pulgar.
+     - Sin animaciones salvo el pulso del GPS: cada repintado que no dice nada es batería que
+       no está en el registro.
+     - `safe-area-inset` en el pie: instalada, el botón de guardar caería debajo de la barra
+       gestual de Android.
+     - La tipografía del sistema. Una fuente web serían 30-80 KB más en la caché y una petición
+       que en el Pas no llega. */
+
+:root {
+  color-scheme: light dark;
+  --papel: #f6f4ee;
+  --lienzo: #fffefa;
+  --tinta: #1e2318;
+  --tenue: #5c6152;
+  --linea: #ddd8c8;
+  --realce: #eeece1;
+  --verde: #2c5c3a;
+  --verde-tinta: #ffffff;
+  --bien: #2c6b40;
+  --flojo: #8a5d0c;
+  --mal: #96201f;
+  --bien-fondo: #e4efe4;
+  --flojo-fondo: #f7ecd5;
+  --mal-fondo: #f6e3e1;
+  --sombra: 0 1px 2px rgb(30 35 24 / 8%), 0 4px 14px rgb(30 35 24 / 5%);
+  --radio: 12px;
+  --toque: 52px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --papel: #13160e;
+    --lienzo: #1b1f16;
+    --tinta: #e9e5d7;
+    --tenue: #9a9d8b;
+    --linea: #333828;
+    --realce: #232719;
+    --verde: #7fc08c;
+    --verde-tinta: #10140c;
+    --bien: #86c894;
+    --flojo: #dcae4a;
+    --mal: #f0797c;
+    --bien-fondo: #1c2c1f;
+    --flojo-fondo: #2e2716;
+    --mal-fondo: #2f1a1a;
+    --sombra: none;
+  }
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  background: var(--papel);
+  color: var(--tinta);
+  font:
+    16px/1.5 system-ui,
+    -apple-system,
+    sans-serif;
+  /* Un cuaderno de campo no se lee en horizontal ni se hace zoom sin querer. */
+  overscroll-behavior-y: contain;
+}
+
+main {
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom));
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 1.3rem;
+  line-height: 1.25;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+h2 {
+  font-size: 1rem;
+  margin: 0;
+  font-weight: 650;
+}
+p {
+  margin: 0;
+}
+code {
+  font: 0.8rem ui-monospace, 'SF Mono', monospace;
+  color: var(--tenue);
+}
+.tenue {
+  color: var(--tenue);
+}
+.lema {
+  color: var(--tenue);
+  font-size: 0.9rem;
+  margin-top: 0.15rem;
+}
+.ayuda,
+small {
+  display: block;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--tenue);
+  font-weight: 400;
+}
+.cargando {
+  padding: 3rem 0;
+  text-align: center;
+  color: var(--tenue);
+}
+
+/* --- Curvas de nivel: el motivo del icono ------------------------------------------- */
+.curvas {
+  display: block;
+  margin: 0 auto 0.75rem;
+  fill: none;
+  stroke: var(--verde);
+  stroke-width: 2.5;
+  opacity: 0.85;
+}
+.curvas circle {
+  fill: var(--verde);
+  stroke: none;
+}
+
+/* --- Botones ------------------------------------------------------------------------ */
+button {
+  font: inherit;
+  font-weight: 600;
+  min-height: var(--toque);
+  padding: 0.7rem 1.1rem;
+  border: 1px solid transparent;
+  border-radius: var(--radio);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+button:disabled {
+  opacity: 0.4;
+}
+button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.primario {
+  flex: 1;
+  background: var(--verde);
+  color: var(--verde-tinta);
+  font-size: 1.05rem;
+  box-shadow: var(--sombra);
+}
+.secundario {
+  background: var(--lienzo);
+  border-color: var(--linea);
+}
+.secundario.compacto {
+  min-height: 40px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+  flex: 0 0 auto;
+}
+.fantasma {
+  color: var(--tenue);
+  font-weight: 500;
+}
+.peligro {
+  flex: 1;
+  background: var(--mal-fondo);
+  color: var(--mal);
+  border-color: transparent;
+}
+.icono {
+  min-height: 44px;
+  width: 44px;
+  padding: 0;
+  color: var(--tenue);
+  flex: 0 0 auto;
+}
+.botones {
+  display: flex;
+  gap: 0.6rem;
+}
+
+/* --- Formularios -------------------------------------------------------------------- */
+label,
+.campo {
+  display: block;
+  margin-bottom: 1rem;
+}
+label > span:first-child,
+.campo > span:first-child {
+  display: block;
+  font-weight: 650;
+  font-size: 0.9rem;
+  margin-bottom: 0.4rem;
+}
+input,
+textarea {
+  font: inherit;
+  width: 100%;
+  min-height: var(--toque);
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--linea);
+  border-radius: var(--radio);
+  background: var(--lienzo);
+  color: inherit;
+}
+textarea {
+  resize: vertical;
+  line-height: 1.45;
+}
+input:focus,
+textarea:focus {
+  outline: 2px solid var(--verde);
+  outline-offset: -1px;
+  border-color: transparent;
+}
+label small {
+  margin-top: 0.35rem;
+}
+fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+fieldset:disabled {
+  opacity: 0.55;
+}
+
+/* Dos columnas: el contador y la foto, que se usan juntos. */
+.dos {
+  display: grid;
+  grid-template-columns: 1fr 96px;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.contador {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--linea);
+  border-radius: var(--radio);
+  background: var(--lienzo);
+  overflow: hidden;
+}
+.contador button {
+  min-height: var(--toque);
+  width: 52px;
+  padding: 0;
+  font-size: 1.4rem;
+  font-weight: 400;
+  color: var(--tenue);
+  border-radius: 0;
+  flex: 0 0 auto;
+}
+.contador input {
+  border: 0;
+  border-left: 1px solid var(--linea);
+  border-right: 1px solid var(--linea);
+  border-radius: 0;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  background: transparent;
+}
+.contador input:focus {
+  outline-offset: -2px;
+}
+
+/* La foto: un cuadrado que es a la vez botón y previsualización. */
+.tesela {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  height: 96px;
+  margin: 0;
+  border: 1px dashed var(--linea);
+  border-radius: var(--radio);
+  background: var(--lienzo);
+  color: var(--tenue);
+  font-size: 0.8rem;
+  font-weight: 600;
+  overflow: hidden;
+}
+.tesela.con-foto {
+  border-style: solid;
+  border-color: var(--verde);
+}
+.tesela input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  padding: 0;
+  min-height: 0;
+}
+.tesela img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Segmentos: la política de sensibilidad, cuatro valores excluyentes. */
+.segmentos {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.4rem;
+}
+.segmentos button {
+  min-height: 44px;
+  padding: 0.5rem 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 550;
+  border: 1px solid var(--linea);
+  background: var(--lienzo);
+  color: var(--tenue);
+}
+.segmentos button.activo {
+  background: var(--verde);
+  border-color: var(--verde);
+  color: var(--verde-tinta);
+  font-weight: 650;
+}
+
+/* --- Estado del GPS: el dato más importante mientras se apunta ---------------------- */
+.gps {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radio);
+  background: var(--realce);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+.gps.grande {
+  flex-wrap: wrap;
+  padding: 0.8rem 0.9rem;
+}
+.gps.grande code {
+  flex-basis: 100%;
+}
+.gps.bien {
+  background: var(--bien-fondo);
+  color: var(--bien);
+}
+.gps.flojo {
+  background: var(--flojo-fondo);
+  color: var(--flojo);
+}
+.gps.mal {
+  background: var(--mal-fondo);
+  color: var(--mal);
+}
+.gps.buscando,
+.gps.apagado {
+  color: var(--tenue);
+}
+
+/* Lo único que se mueve en toda la aplicación: que el GPS está buscando se ve mejor así que
+   con texto, y es el único estado en el que hay que esperar. */
+.pulso {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--tenue);
+  animation: latir 1.4s ease-in-out infinite;
+}
+@keyframes latir {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pulso {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+/* --- Avisos ------------------------------------------------------------------------- */
+.aviso {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--radio);
+  font-size: 0.87rem;
+  line-height: 1.4;
+  margin-bottom: 1rem;
+}
+.aviso svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+.aviso.mal {
+  background: var(--mal-fondo);
+  color: var(--mal);
+}
+.aviso.flojo {
+  background: var(--flojo-fondo);
+  color: var(--flojo);
+}
+
+/* --- Alta --------------------------------------------------------------------------- */
+.alta {
+  padding-top: 2.5rem;
+}
+.alta h1 {
+  text-align: center;
+  font-size: 1.5rem;
+}
+.alta .lema {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+/* --- Inicio ------------------------------------------------------------------------- */
+.cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.tarjeta {
+  display: flex;
+  width: 100%;
+  text-align: left;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--linea);
+  border-radius: var(--radio);
+  background: var(--lienzo);
+  box-shadow: var(--sombra);
+  margin-bottom: 1.5rem;
+}
+.tarjeta.abierta {
+  border-left: 4px solid var(--verde);
+}
+.tarjeta.nueva {
+  display: block;
+  margin-bottom: 1.5rem;
+}
+.tarjeta.nueva label {
+  margin-bottom: 0.75rem;
+}
+.tarjeta.nueva .primario {
+  width: 100%;
+}
+.tarjeta-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+  min-width: 0;
+}
+.tarjeta-texto strong {
+  font-size: 1.05rem;
+}
+.tarjeta svg {
+  color: var(--tenue);
+  flex: 0 0 auto;
+}
+
+.etiqueta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  align-self: flex-start;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--realce);
+  color: var(--tenue);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.etiqueta.bien {
+  background: var(--bien-fondo);
+  color: var(--bien);
+}
+.etiqueta.mal {
+  background: var(--mal-fondo);
+  color: var(--mal);
+}
+.etiqueta.candado {
+  background: var(--flojo-fondo);
+  color: var(--flojo);
+  text-transform: none;
+}
+
+.lista h2 {
+  color: var(--tenue);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+.lista ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.lista li + li {
+  border-top: 1px solid var(--linea);
+}
+.fila {
+  display: flex;
+  width: 100%;
+  text-align: left;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 0.25rem;
+  font-weight: 400;
+}
+.fila .fecha {
+  flex: 0 0 4.2rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--tenue);
+  font-variant-numeric: tabular-nums;
+}
+.fila-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  flex: 1;
+  min-width: 0;
+}
+.fila-texto span {
+  font-size: 0.82rem;
+}
+.fila svg {
+  color: var(--linea);
+}
+
+.vacio {
+  color: var(--tenue);
+  font-size: 0.9rem;
+  padding: 0.5rem 0;
+}
+.vacio.grande {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+.vacio.grande p {
+  margin-top: 0.35rem;
+}
+
+.pie {
+  margin-top: 2.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--linea);
+  font-size: 0.82rem;
+}
+.pie a {
+  color: var(--tenue);
+}
+
+/* --- La salida ---------------------------------------------------------------------- */
+.barra {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: -0.25rem -0.5rem 1rem;
+}
+.barra-texto {
+  min-width: 0;
+}
+.barra-texto span {
+  font-size: 0.82rem;
+}
+
+.linea {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 5rem;
+}
+.entrada {
+  border-top: 1px solid var(--linea);
+}
+.entrada:last-child {
+  border-bottom: 1px solid var(--linea);
+}
+.entrada.nota {
+  padding: 0.9rem 0.25rem;
+  border-left: 3px solid var(--linea);
+  padding-left: 0.7rem;
+}
+.entrada-boton {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.9rem 0.25rem;
+  font-weight: 400;
+  min-height: 0;
+  border-radius: 0;
+}
+.entrada-fila {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.hora {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.95rem;
+}
+.que {
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.donde {
+  font-size: 0.75rem;
+}
+.entrada.retractada .que {
+  text-decoration: line-through;
+}
+.entrada.retractada {
+  opacity: 0.55;
+}
+
+.fotos {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.foto {
+  display: block;
+  width: 76px;
+  height: 76px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: var(--realce);
+}
+.foto.grande {
+  width: 100%;
+  height: auto;
+  max-height: 55vh;
+  object-fit: contain;
+  border-radius: var(--radio);
+}
+.fotos.grandes {
+  margin-bottom: 1rem;
+}
+.foto.vacia {
+  border: 1px dashed var(--linea);
+}
+
+.cerrar-salida {
+  display: block;
+  width: 100%;
+  margin: 1.5rem 0 5rem;
+}
+
+/* La acción principal, fija abajo y por encima de la barra gestual. */
+.acciones {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  gap: 0.6rem;
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--papel) 92%, transparent);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid var(--linea);
+}
+.acciones .secundario {
+  flex: 0 0 auto;
+}
+
+.confirmar {
+  padding: 0.9rem;
+  border: 1px solid var(--linea);
+  border-radius: var(--radio);
+  background: var(--lienzo);
+  margin: 1rem 0;
+}
+.confirmar p {
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+
+/* --- Hoja a pantalla completa ------------------------------------------------------- */
+.hoja {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  background: var(--papel);
+}
+.hoja-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem 0.6rem 1rem;
+  border-bottom: 1px solid var(--linea);
+  padding-top: calc(0.6rem + env(safe-area-inset-top));
+}
+.hoja-cuerpo {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 1rem;
+  max-width: 34rem;
+  width: 100%;
+  margin: 0 auto;
+}
+.hoja-pie {
+  border-top: 1px solid var(--linea);
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+  max-width: 34rem;
+  width: 100%;
+  margin: 0 auto;
+  background: var(--lienzo);
+}
+.hoja-pie .primario {
+  width: 100%;
+}
+.hoja-pie .ayuda,
+.hoja-pie .aviso {
+  margin-bottom: 0.6rem;
+}
+.hoja-pie .confirmar {
+  margin: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.datos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  padding: 0.8rem;
+  border-radius: var(--radio);
+  background: var(--realce);
+  margin-bottom: 1.25rem;
+}
+.datos > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.datos span {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
+.datos code {
+  color: var(--tinta);
+  font-size: 0.85rem;
+}
+
+/* --- Atascado ----------------------------------------------------------------------- */
+.atascado {
+  padding: 4rem 1rem;
+  text-align: center;
+  color: var(--mal);
+}
+.atascado h2 {
+  margin: 0.75rem 0 0.5rem;
+}
+.atascado p {
+  color: var(--tinta);
+  margin-bottom: 0.5rem;
+}
+.atascado .primario {
+  margin-top: 1.5rem;
+  width: 100%;
+}
+
+/* --- Diagnóstico (pantalla técnica, aparte) ----------------------------------------- */
+section.bien,
+section.mal {
+  border: 1px solid var(--linea);
+  border-left-width: 4px;
+  border-radius: var(--radio);
+  padding: 0.75rem 0.9rem;
+  margin-bottom: 0.6rem;
+  background: var(--lienzo);
+}
+section.bien {
+  border-left-color: var(--bien);
+}
+section.mal {
+  border-left-color: var(--mal);
+}
+section.mal h2 {
+  color: var(--mal);
+}
+pre {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 12px/1.45 ui-monospace, monospace;
+  color: var(--tenue);
+}
+.menudo {
+  min-height: 40px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+  color: var(--tenue);
+  border: 1px solid var(--linea);
+}

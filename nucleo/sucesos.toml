@@ -1,0 +1,198 @@
+# Registro de tipos de suceso — segunda mitad de la fuente única.
+#
+# El pliegue (ADR-0001 §4.4) es un intérprete sobre este fichero, no una función por tipo.
+# Eso es lo que hace alcanzable la prueba de conformidad entre Python y TypeScript: ambas
+# implementaciones interpretan la misma tabla en vez de reimplementar la misma lógica.
+#
+# Convención que elimina dos clases enteras de inconsistencia:
+#   - la clave del sujeto NO va en la carga: es `suceso.sujeto_id`
+#   - cdc:cuadernoID NO va en la carga: es `suceso.cuaderno_id`
+# Así una carga no puede contradecir a su propio sobre.
+#
+# modos:
+#   completo -> crea la fila. Exige los campos requeridos de la clase, aplica predeterminados.
+#   parche   -> actualiza solo los campos presentes. Último en escribir gana, por orden de hlc.
+#   anexar   -> añade elementos a un campo de tipo json que contiene una lista.
+#
+# `fija` son valores que impone el propio tipo de suceso y que la carga no puede sobrescribir:
+# es lo que convierte «retractada» en un suceso con intención en vez de un parche cualquiera.
+
+version = 1
+
+# --- Cuaderno -------------------------------------------------------------------------
+[[tipos]]
+tipo = "cuaderno.declarado"
+tipo_version = 1
+sujeto = "cuaderno"
+clase = "Cuaderno"
+modo = "completo"
+
+[[tipos]]
+tipo = "cuaderno.enmendado"
+tipo_version = 1
+sujeto = "cuaderno"
+clase = "Cuaderno"
+modo = "parche"
+
+# --- Sitio ----------------------------------------------------------------------------
+[[tipos]]
+tipo = "sitio.declarado"
+tipo_version = 1
+sujeto = "sitio"
+clase = "Sitio"
+modo = "completo"
+
+[[tipos]]
+tipo = "sitio.enmendado"
+tipo_version = 1
+sujeto = "sitio"
+clase = "Sitio"
+modo = "parche"
+
+# --- Salida ---------------------------------------------------------------------------
+[[tipos]]
+tipo = "salida.iniciada"
+tipo_version = 1
+sujeto = "salida"
+clase = "Salida"
+modo = "completo"
+
+[[tipos]]
+tipo = "salida.enmendada"
+tipo_version = 1
+sujeto = "salida"
+clase = "Salida"
+modo = "parche"
+
+[[tipos]]
+tipo = "salida.recorrido.anexado"
+tipo_version = 1
+sujeto = "salida"
+clase = "Salida"
+modo = "anexar"
+campo_lista = "cdc:recorrido"
+
+[[tipos]]
+tipo = "salida.cerrada"
+tipo_version = 1
+sujeto = "salida"
+clase = "Salida"
+modo = "parche"
+fija = { "cdc:cerrada" = true }
+
+# --- Ocurrencia -----------------------------------------------------------------------
+[[tipos]]
+tipo = "ocurrencia.registrada"
+tipo_version = 1
+sujeto = "ocurrencia"
+clase = "Occurrence"
+modo = "completo"
+
+[[tipos]]
+tipo = "ocurrencia.enmendada"
+tipo_version = 1
+sujeto = "ocurrencia"
+clase = "Occurrence"
+modo = "parche"
+
+[[tipos]]
+tipo = "ocurrencia.retractada"
+tipo_version = 1
+sujeto = "ocurrencia"
+clase = "Occurrence"
+modo = "parche"
+fija = { "cdc:retractada" = true }
+
+[[tipos]]
+tipo = "ocurrencia.sensibilidad.fijada"
+tipo_version = 1
+sujeto = "ocurrencia"
+clase = "Occurrence"
+modo = "parche"
+solo_campos = ["cdc:politicaSensibilidad"]
+
+# --- Medio ----------------------------------------------------------------------------
+[[tipos]]
+tipo = "medio.adjuntado"
+tipo_version = 1
+sujeto = "medio"
+clase = "Multimedia"
+modo = "completo"
+
+[[tipos]]
+tipo = "medio.desadjuntado"
+tipo_version = 1
+sujeto = "medio"
+clase = "Multimedia"
+modo = "parche"
+fija = { "cdc:desadjuntado" = true }
+
+# --- Nota -----------------------------------------------------------------------------
+[[tipos]]
+tipo = "nota.escrita"
+tipo_version = 1
+sujeto = "nota"
+clase = "Nota"
+modo = "completo"
+
+[[tipos]]
+tipo = "nota.revisada"
+tipo_version = 1
+sujeto = "nota"
+clase = "Nota"
+modo = "parche"
+solo_campos = ["cdc:cuerpoMarkdown"]
+
+[[tipos]]
+tipo = "nota.retractada"
+tipo_version = 1
+sujeto = "nota"
+clase = "Nota"
+modo = "parche"
+fija = { "cdc:retractada" = true }
+
+# --- Identificación -------------------------------------------------------------------
+[[tipos]]
+tipo = "identificacion.propuesta"
+tipo_version = 1
+sujeto = "identificacion"
+clase = "Identification"
+modo = "completo"
+
+[[tipos]]
+tipo = "identificacion.aceptada"
+tipo_version = 1
+sujeto = "identificacion"
+clase = "Identification"
+modo = "parche"
+fija = { "dwc:identificationVerificationStatus" = "accepted" }
+
+[[tipos]]
+tipo = "identificacion.rechazada"
+tipo_version = 1
+sujeto = "identificacion"
+clase = "Identification"
+modo = "parche"
+fija = { "dwc:identificationVerificationStatus" = "rejected" }
+
+[[tipos]]
+tipo = "taxon.resuelto"
+tipo_version = 1
+sujeto = "identificacion"
+clase = "Identification"
+modo = "parche"
+solo_campos = [
+  "dwc:scientificName",
+  "dwc:taxonRank",
+  "dwc:taxonID",
+  "cdc:gbifTaxonKey",
+  "cdc:versionArbolGbif",
+]
+
+# --- Señal acústica (ADR-0001 §7.1) ---------------------------------------------------
+[[tipos]]
+tipo = "senal.detectada"
+tipo_version = 1
+sujeto = "senal"
+clase = "MeasurementOrFact"
+modo = "completo"

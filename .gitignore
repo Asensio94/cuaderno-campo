@@ -1,0 +1,8 @@
+node_modules/
+dist/
+__pycache__/
+*.pyc
+.pytest_cache/
+# Claves y cuotas: Pl@ntNet y lo que venga detras van en el entorno, nunca aqui.
+.env
+.env.*

@@ -1,0 +1,7 @@
+# Finales de linea LF en el repositorio y en el arbol de trabajo. Las pruebas de conformidad
+# corren en Windows y en Ubuntu sobre los mismos ficheros de corpus, y una diferencia de CRLF
+# entre las dos maquinas seria un fallo que solo aparece en una.
+* text=auto eol=lf
+
+*.png binary
+*.wasm binary

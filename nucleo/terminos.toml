@@ -1,0 +1,247 @@
+# Registro de términos — fuente única del modelo de datos.
+#
+# De este fichero se generan, y NUNCA se editan a mano:
+#   nucleo/generado/001_esquema.sqlite.sql
+#   nucleo/generado/001_esquema.postgres.sql
+#   nucleo/generado/terminos.ts        (tipos TypeScript + esquemas Zod)
+#   nucleo/generado/terminos.py        (modelos Pydantic)
+#   nucleo/generado/meta.xml           (descriptor del Darwin Core Archive)
+#
+# Regla del ADR-0001 §1.5: término Darwin Core literal siempre que el término exista;
+# namespace cdc: propio para lo que DwC no cubre. El nombre de columna se deriva del
+# término por conversión mecánica camelCase -> snake_case, salvo `columna` explícita.
+#
+# tipos: texto | entero | real | booleano | json | instante | fecha
+#   instante = ISO-8601 en UTC. TEXT en SQLite, TIMESTAMPTZ en PostgreSQL.
+#   Las fechas de Darwin Core (eventDate, dateIdentified) son `texto` a propósito:
+#   el estándar las define como cadena, que puede ser un intervalo.
+
+version = 1
+
+[namespaces]
+dwc = "http://rs.tdwg.org/dwc/terms/"
+dc = "http://purl.org/dc/elements/1.1/"
+dcterms = "http://purl.org/dc/terms/"
+gbif = "http://rs.gbif.org/terms/1.0/"
+cdc = "https://cuaderno.local/terms/"
+
+
+# --------------------------------------------------------------------------------------
+# Cuaderno — entidad de primer orden (ADR-0001 §5.1). Interno: no sale al archivo DwC.
+# --------------------------------------------------------------------------------------
+[[clases]]
+nombre = "Cuaderno"
+tabla = "proy_cuaderno"
+papel = "interno"
+campos = [
+  { termino = "cdc:cuadernoID", tipo = "texto", clave = true },
+  { termino = "cdc:nombre", tipo = "texto", requerido = true },
+  { termino = "dwc:recordedBy", tipo = "texto", requerido = true, nota = "recordedBy por defecto de sus ocurrencias" },
+  { termino = "cdc:politicaPublicacion", tipo = "texto", requerido = true, predeterminado = "privado", enum = ["privado", "generalizado", "completo"] },
+]
+
+
+# --------------------------------------------------------------------------------------
+# Sitio — lugar con nombre, reutilizable entre años (ADR-0001 §5). Por cuaderno.
+# --------------------------------------------------------------------------------------
+[[clases]]
+nombre = "Sitio"
+tabla = "proy_sitio"
+papel = "interno"
+campos = [
+  { termino = "dwc:locationID", tipo = "texto", clave = true },
+  { termino = "cdc:cuadernoID", tipo = "texto", requerido = true, indice = true },
+  { termino = "dwc:locality", tipo = "texto", requerido = true },
+  { termino = "dwc:decimalLatitude", tipo = "real", requerido = true, nota = "centroide WGS84" },
+  { termino = "dwc:decimalLongitude", tipo = "real", requerido = true },
+  { termino = "cdc:radioMetros", tipo = "real", requerido = true, nota = "radio que define la pertenencia al sitio" },
+  { termino = "dwc:habitat", tipo = "texto" },
+  { termino = "cdc:notas", tipo = "texto" },
+]
+
+
+# --------------------------------------------------------------------------------------
+# Salida — el Event de Darwin Core. Desnormalizada sobre cada ocurrencia al exportar.
+# --------------------------------------------------------------------------------------
+[[clases]]
+nombre = "Salida"
+tabla = "proy_salida"
+papel = "interno"
+campos = [
+  { termino = "dwc:eventID", tipo = "texto", clave = true },
+  { termino = "cdc:cuadernoID", tipo = "texto", requerido = true, indice = true },
+  { termino = "dwc:eventDate", tipo = "texto", requerido = true, nota = "ISO-8601 con desplazamiento explícito" },
+  { termino = "cdc:zonaHoraria", tipo = "texto", requerido = true, nota = "identificador IANA: Europe/Madrid" },
+  { termino = "dwc:locality", tipo = "texto" },
+  { termino = "dwc:locationID", tipo = "texto", indice = true },
+  { termino = "dwc:samplingProtocol", tipo = "texto" },
+  { termino = "dwc:eventRemarks", tipo = "texto" },
+  { termino = "cdc:salidaCompartidaID", tipo = "texto", indice = true, nota = "enlaza salidas conjuntas entre cuadernos sin escritura compartida" },
+  { termino = "cdc:coberturaRecorrido", tipo = "real", nota = "fracción de la duración con posiciones registradas" },
+  { termino = "cdc:recorrido", tipo = "json", nota = "lista de posiciones; fuente: primer_plano | gpx_importado" },
+  { termino = "cdc:cerrada", tipo = "booleano", requerido = true, predeterminado = false },
+]
+
+
+# --------------------------------------------------------------------------------------
+# Occurrence — núcleo del Darwin Core Archive.
+# --------------------------------------------------------------------------------------
+[[clases]]
+nombre = "Occurrence"
+tabla = "proy_ocurrencia"
+papel = "nucleo"
+uri = "http://rs.tdwg.org/dwc/terms/Occurrence"
+fichero = "occurrence.txt"
+campos = [
+  { termino = "dwc:occurrenceID", tipo = "texto", clave = true, nota = "UUID v4 generado en el dispositivo, nunca en el servidor" },
+  { termino = "cdc:cuadernoID", tipo = "texto", requerido = true, indice = true, exportar = false },
+  { termino = "dwc:eventID", tipo = "texto", requerido = true, indice = true },
+  { termino = "dwc:basisOfRecord", tipo = "texto", requerido = true, predeterminado = "HumanObservation" },
+  { termino = "dwc:recordedBy", tipo = "texto", requerido = true },
+  { termino = "dwc:decimalLatitude", tipo = "real", requerido = true, indice = true },
+  { termino = "dwc:decimalLongitude", tipo = "real", requerido = true, indice = true },
+  { termino = "dwc:geodeticDatum", tipo = "texto", requerido = true, predeterminado = "WGS84" },
+  { termino = "dwc:coordinateUncertaintyInMeters", tipo = "real", requerido = true, nota = "precisión real del GPS, nunca inventada" },
+  { termino = "cdc:altitudGpsElipsoidal", tipo = "real", nota = "altura elipsoidal del GPS. NO es minimumElevationInMeters (ADR §1.8)" },
+  { termino = "cdc:altitudGpsExactitud", tipo = "real" },
+  { termino = "dwc:minimumElevationInMeters", tipo = "real", nota = "solo si se ha derivado de un MDE" },
+  { termino = "dwc:individualCount", tipo = "entero" },
+  { termino = "dwc:organismQuantity", tipo = "texto", nota = "para escalas de abundancia y cobertura" },
+  { termino = "dwc:organismQuantityType", tipo = "texto" },
+  { termino = "dwc:lifeStage", tipo = "texto" },
+  { termino = "dwc:sex", tipo = "texto" },
+  { termino = "dwc:behavior", tipo = "texto" },
+  { termino = "dwc:habitat", tipo = "texto" },
+  { termino = "dwc:establishmentMeans", tipo = "texto" },
+  { termino = "dwc:degreeOfEstablishment", tipo = "texto", nota = "captive para los taxones domésticos del §7.1" },
+  { termino = "dwc:occurrenceRemarks", tipo = "texto" },
+  { termino = "cdc:politicaSensibilidad", tipo = "texto", requerido = true, predeterminado = "publico", enum = ["publico", "difuso_1km", "difuso_10km", "retenido"], exportar = false },
+  { termino = "cdc:capturadoEn", tipo = "instante", nota = "eje temporal de captura (ADR §2)" },
+  { termino = "cdc:retractada", tipo = "booleano", requerido = true, predeterminado = false, exportar = false },
+  { termino = "cdc:motivoRetractacion", tipo = "texto", exportar = false },
+
+  # Derivados: se calculan al exportar, no tienen columna en la proyección y no viajan en
+  # ninguna carga (ADR §8). Guardarlos sería duplicar estado que el registro ya determina, y
+  # además duplicarlo mal: bastaría aceptar otra identificación para que la copia mintiera.
+  #
+  # De la identificación aceptada (identificationVerificationStatus = 'accepted'). Si la
+  # ocurrencia no tiene ninguna aceptada, van vacíos: una ocurrencia sin determinación es un
+  # registro válido en Darwin Core, y publicar la mejor hipótesis del modelo como si fuera el
+  # nombre del registro es exactamente lo que la restricción 3 prohíbe.
+  { termino = "dwc:scientificName", tipo = "texto", derivado = true },
+  { termino = "dwc:taxonRank", tipo = "texto", derivado = true },
+  { termino = "dwc:taxonID", tipo = "texto", derivado = true },
+  { termino = "dwc:identifiedBy", tipo = "texto", derivado = true },
+  { termino = "dwc:dateIdentified", tipo = "texto", derivado = true },
+
+  # De la salida (Event), desnormalizados: el núcleo del archivo tiene que ser legible fila a
+  # fila aunque el consumidor ignore la extensión.
+  { termino = "dwc:eventDate", tipo = "texto", derivado = true },
+  { termino = "dwc:locality", tipo = "texto", derivado = true },
+  { termino = "dwc:locationID", tipo = "texto", derivado = true },
+  { termino = "dwc:samplingProtocol", tipo = "texto", derivado = true },
+
+  # De cdc:politicaSensibilidad: los términos estándar con los que se declara la ofuscación.
+  # La política en sí no se exporta; lo que se exporta es su consecuencia (ADR §1.5).
+  { termino = "dwc:dataGeneralizations", tipo = "texto", derivado = true },
+  { termino = "dwc:informationWithheld", tipo = "texto", derivado = true },
+]
+
+
+# --------------------------------------------------------------------------------------
+# Identification — extensión Identification History. N hipótesis por ocurrencia.
+# --------------------------------------------------------------------------------------
+[[clases]]
+nombre = "Identification"
+tabla = "proy_identificacion"
+papel = "extension"
+uri = "http://rs.tdwg.org/dwc/terms/Identification"
+fichero = "identification.txt"
+enlace = "dwc:occurrenceID"
+campos = [
+  { termino = "dwc:identificationID", tipo = "texto", clave = true },
+  { termino = "cdc:cuadernoID", tipo = "texto", requerido = true, indice = true, exportar = false },
+  { termino = "dwc:occurrenceID", tipo = "texto", requerido = true, indice = true },
+  { termino = "dwc:verbatimIdentification", tipo = "texto", requerido = true, nota = "etiqueta literal del modelo, tal cual" },
+  { termino = "dwc:scientificName", tipo = "texto" },
+  { termino = "dwc:taxonRank", tipo = "texto" },
+  { termino = "dwc:taxonID", tipo = "texto", nota = "URI del taxón en GBIF" },
+  { termino = "cdc:gbifTaxonKey", tipo = "entero", indice = true, nota = "clave numérica, para la clausura taxonómica del §6" },
+  { termino = "cdc:versionArbolGbif", tipo = "texto" },
+  { termino = "dwc:identifiedBy", tipo = "texto", requerido = true, nota = "identificador del modelo, o human" },
+  { termino = "cdc:modeloVersion", tipo = "texto", nota = "versión de los PESOS, no del paquete (ADR §1.7)" },
+  { termino = "cdc:confianza", tipo = "real" },
+  { termino = "cdc:topK", tipo = "json", nota = "las cinco mejores etiquetas con su confianza" },
+  { termino = "dwc:dateIdentified", tipo = "texto" },
+  { termino = "dwc:identificationVerificationStatus", tipo = "texto", requerido = true, predeterminado = "unverified" },
+  { termino = "dwc:identificationQualifier", tipo = "texto", nota = "cf., aff." },
+  { termino = "dwc:identificationRemarks", tipo = "texto" },
+]
+
+
+# --------------------------------------------------------------------------------------
+# Multimedia — extensión Simple Multimedia de GBIF.
+# --------------------------------------------------------------------------------------
+[[clases]]
+nombre = "Multimedia"
+tabla = "proy_medio"
+papel = "extension"
+uri = "http://rs.gbif.org/terms/1.0/Multimedia"
+fichero = "multimedia.txt"
+enlace = "dwc:occurrenceID"
+campos = [
+  { termino = "cdc:medioID", tipo = "texto", clave = true },
+  { termino = "cdc:cuadernoID", tipo = "texto", requerido = true, indice = true, exportar = false },
+  { termino = "dwc:occurrenceID", tipo = "texto", requerido = true, indice = true },
+  { termino = "dc:type", tipo = "texto", requerido = true, enum = ["StillImage", "Sound"] },
+  { termino = "dcterms:format", tipo = "texto", requerido = true },
+  { termino = "cdc:hashSha256", tipo = "texto", requerido = true, indice = true, nota = "el blob está direccionado por contenido; esto es el hecho que guarda el registro" },
+  { termino = "cdc:bytes", tipo = "entero" },
+  { termino = "cdc:rutaLocal", tipo = "texto", exportar = false },
+  { termino = "dcterms:references", tipo = "texto", nota = "ruta remota, si se ha subido" },
+  { termino = "dcterms:created", tipo = "instante" },
+  { termino = "cdc:exif", tipo = "json", exportar = false, nota = "íntegro en local, saneado al exportar (ADR §1.2)" },
+  { termino = "cdc:desadjuntado", tipo = "booleano", requerido = true, predeterminado = false, exportar = false },
+]
+
+
+# --------------------------------------------------------------------------------------
+# MeasurementOrFact — extensión. Aquí salen las señales acústicas del §7.1.
+# --------------------------------------------------------------------------------------
+[[clases]]
+nombre = "MeasurementOrFact"
+tabla = "proy_senal"
+papel = "extension"
+uri = "http://rs.tdwg.org/dwc/terms/MeasurementOrFact"
+fichero = "measurementorfact.txt"
+enlace = "dwc:eventID"
+campos = [
+  { termino = "cdc:senalID", tipo = "texto", clave = true },
+  { termino = "cdc:cuadernoID", tipo = "texto", requerido = true, indice = true, exportar = false },
+  { termino = "dwc:eventID", tipo = "texto", requerido = true, indice = true },
+  { termino = "cdc:medioID", tipo = "texto", requerido = true, indice = true, exportar = false },
+  { termino = "dwc:measurementType", tipo = "texto", requerido = true, nota = "acousticDetection:antropofonia | :geofonia" },
+  { termino = "dwc:measurementValue", tipo = "texto", requerido = true, nota = "etiqueta literal del modelo" },
+  { termino = "cdc:claseEtiqueta", tipo = "texto", requerido = true, enum = ["taxon_silvestre", "taxon_domestico", "antropofonia", "geofonia", "artefacto"], exportar = false },
+  { termino = "cdc:confianza", tipo = "real", requerido = true },
+  { termino = "cdc:desplazamientoSegundos", tipo = "real", requerido = true },
+  { termino = "dwc:measurementMethod", tipo = "texto", requerido = true, nota = "BirdNET <versión de los pesos>" },
+  { termino = "dwc:measurementDeterminedDate", tipo = "texto" },
+]
+
+
+# --------------------------------------------------------------------------------------
+# Nota — sin equivalente en Darwin Core. Es la mitad del valor de un cuaderno de campo.
+# --------------------------------------------------------------------------------------
+[[clases]]
+nombre = "Nota"
+tabla = "proy_nota"
+papel = "interno"
+campos = [
+  { termino = "cdc:notaID", tipo = "texto", clave = true },
+  { termino = "cdc:cuadernoID", tipo = "texto", requerido = true, indice = true },
+  { termino = "dwc:occurrenceID", tipo = "texto", indice = true, nota = "opcional: una nota puede no colgar de ninguna observación" },
+  { termino = "dwc:eventID", tipo = "texto", indice = true },
+  { termino = "cdc:cuerpoMarkdown", tipo = "texto", requerido = true },
+  { termino = "cdc:retractada", tipo = "booleano", requerido = true, predeterminado = false },
+]

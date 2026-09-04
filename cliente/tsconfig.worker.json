@@ -1,0 +1,13 @@
+// El trabajador del almacén, con su propio entorno: `WebWorker` en vez de `DOM`.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "WebWorker"]
+  },
+  "include": ["src/almacen/worker.ts", "src/wa-sqlite.d.ts", "../nucleo/registro-ts"],
+  "exclude": [
+    "../nucleo/registro-ts/sqlite-node.ts",
+    "../nucleo/registro-ts/**/*.test.ts",
+    "../nucleo/registro-ts/**/*.pruebas.ts"
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "name": "cuaderno-campo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Cuaderno de campo digital. Uso personal, no comercial (ver README).",
+  "scripts": {
+    "prueba": "node --experimental-strip-types --experimental-sqlite --disable-warning=ExperimentalWarning --test \"nucleo/registro-ts/**/*.test.ts\"",
+    "prueba:python": "python -m pytest pruebas -q",
+    "verificar": "python -m nucleo.generadores verificar",
+    "generar": "python -m nucleo.generadores generar && python -m pruebas.conformidad.generar_corpus",
+    "desarrollo": "vite --config cliente/vite.config.ts",
+    "desarrollo:red": "vite --config cliente/vite.config.ts --host",
+    "construir": "vite build --config cliente/vite.config.ts",
+    "servir": "vite preview --config cliente/vite.config.ts --host --port 5173 --strictPort",
+    "tipos": "tsc -p cliente/tsconfig.json && tsc -p cliente/tsconfig.worker.json"
+  },
+  "dependencies": {
+    "exifr": "^7.1.3",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "wa-sqlite": "1.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
+    "@vitejs/plugin-react": "6.1.1",
+    "typescript": "7.0.2",
+    "vite": "8.2.2",
+    "vite-plugin-pwa": "1.3.0",
+    "vitest": "5.0.0"
+  }
+}
