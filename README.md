@@ -33,13 +33,25 @@ ninguna parte de la interfaz ni de la salida de la API, ni aunque un modelo devu
 con confianza altísima. Sin excepciones y sin opción de configuración. Una identificación
 fotográfica es una hipótesis; una intoxicación por amanita es irreversible.
 
+## Dónde vive
+
+**https://asensio94.github.io/cuaderno-campo/** — abrir en el teléfono e instalar en la pantalla
+de inicio. Se publica desde `principal` con el workflow de `.github/workflows/pages.yml`, y el
+despliegue va detrás de los tipos y las pruebas.
+
+Ese origen es **el** origen: OPFS se indexa por su cadena, así que el cuaderno de
+`asensio94.github.io` no es el de ningún otro sitio. Mudarlo a un dominio propio más adelante
+obliga a exportar el registro e importarlo en el origen nuevo — posible, porque el registro es de
+solo añadir y se exporta entero, pero es trabajo. Y cuidado con publicar otras PWA en
+`asensio94.github.io`: todas comparten origen, y por tanto almacén.
+
 ## Puesta en marcha
 
 ```bash
 npm install
 npm run generar      # nucleo/generado/ desde terminos.toml y sucesos.toml
 npm run construir
-npm run servir       # sirve dist/ en la red local
+npm run servir       # sirve dist/ en la red local, en /cuaderno-campo/
 ```
 
 Para trabajar:
@@ -61,15 +73,13 @@ El almacén vive en **OPFS** con manejadores de acceso síncronos, y eso —igua
 de servicio y la geolocalización— exige contexto seguro: `https://` o `localhost`. Por HTTP sobre
 la red local el navegador no los da y la aplicación no arranca.
 
-Para probar en un Android por HTTP hay dos caminos: `chrome://flags` →
-*Insecure origins treated as secure*, añadiendo el origen exacto (`http://192.168.1.122:5173`), o
-servir por HTTPS con un certificado propio. Para el uso real, HTTPS.
+Por eso el uso real va por GitHub Pages, que es HTTPS. Para probar un cambio en el teléfono antes
+de publicarlo, `npm run servir` y `chrome://flags` → *Insecure origins treated as secure* con el
+origen exacto; pero eso es para probar, no para el cuaderno de verdad: los datos que apuntes ahí
+se quedan en ese origen.
 
-Dos avisos que cuestan tiempo si no se saben:
+Un aviso que cuesta tiempo si no se sabe:
 
-- **OPFS es por origen, y el puerto cuenta.** El cuaderno de `http://192.168.1.122:5173` no es el
-  de `https://cuaderno.example`. Conviene decidir el origen definitivo *antes* de la primera
-  observación de verdad.
 - **Una pestaña, no dos.** `AccessHandlePoolVFS` toma sus ficheros en exclusiva; con el mismo
   cuaderno abierto en dos sitios, el segundo no abre. La aplicación lo dice y ofrece reintentar.
 
