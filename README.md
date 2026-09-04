@@ -204,6 +204,49 @@ que genera `datos/birdnet/emparejar.py` contra el subárbol local de Aves y la A
 filas están curadas a mano, las que no son un nombre científico. Si al subir de versión de pesos
 aparece una etiqueta nueva sin clase, el generador falla.
 
+## Plantas por la foto: el conector de Pl@ntNet
+
+Igual que BirdNET, es otro dispositivo del cuaderno y trabaja sobre una copia. La diferencia es
+que **este sí sale de la máquina**: sube fotos a una API, y de ahí las tres reglas que lo gobiernan.
+
+La clave se lee del entorno y no está en el repositorio:
+
+```bash
+export CDC_PLANTNET_CLAVE='...'                        # bash
+$env:CDC_PLANTNET_CLAVE = '...'                        # PowerShell
+python -m trabajadores.plantnet identificar copia.zip
+```
+
+`pendientes` en vez de `identificar` dice qué fotos se preguntarían, sin red y sin clave.
+Opciones: `--cuaderno ID`, `--dispositivo ID`, `--organo leaf|flower|fruit|bark|habit|auto`,
+`--proyecto all`, `--idioma es`, `--min-confianza X` (0,10 por defecto), `--maximo N`,
+`--reintentar` (vuelve a preguntar por las que ya se preguntaron), `--estado DIR`, `--salida F`.
+
+Las tres reglas:
+
+1. **La foto se sanea antes de subirla.** Lo que sale por el socket va sin EXIF: sin GPS, sin
+   marca del teléfono. El fichero local no se toca. Si un formato no se sabe sanear —HEIC hoy—,
+   la foto **no se sube** y queda pendiente.
+2. **Las ocurrencias con política `retenido` no salen de la máquina.** Preguntar es exportar, y
+   difuminar coordenadas no sirve de nada cuando lo que viaja es la imagen.
+3. **La clave no aparece en ningún mensaje.** Pl@ntNet la exige en la URL, así que todo el texto
+   de error del conector pasa por un filtro que la borra, y hay una prueba que lo comprueba
+   forzando un fallo.
+
+Por cada foto salen hasta cinco `identificacion.propuesta` con su confianza tal cual, su top-5 y
+la versión que devolvió la API, y un `taxon.resuelto` cuando la respuesta trae clave de GBIF. En
+hongos el rango se corta en género y en insectos en género o familia; cuando se corta, el taxón
+se deja sin resolver a propósito, porque la clave de GBIF que devuelve la API es la de la
+especie. Ninguna hipótesis se acepta sola.
+
+El conector **no pide** el proyecto `useful` de Pl@ntNet, que clasifica las plantas por sus usos
+humanos. La cuota que queda se informa al final de cada pasada, y si se agota el trabajo se para
+solo y lo que faltaba sigue pendiente.
+
+Límite conocido: Pl@ntNet no publica una versión de pesos citable, así que `cdc:modeloVersion`
+guarda la cadena de versión que devuelve la respuesta. Es menos reproducible que BirdNET, y queda
+dicho en vez de disimulado.
+
 ## Estado
 
 Fase 0, en curso.
@@ -219,5 +262,8 @@ Hecho también: el trabajador de BirdNET, con las etiquetas clasificadas y su vu
 por copia; la pantalla de series, con su fenología por meses; y el mapa sin conexión, con el
 recorte de mosaicos medido y su gestión de cuota.
 
-Pendiente: conector de Pl@ntNet; validar un archivo real en gbif.org; una salida de verdad al Pas
-con audio y su análisis.
+Hecho además: el conector de Pl@ntNet, con la foto saneada antes de salir de la máquina; y el
+ejecutor de migraciones del registro en los dos lenguajes.
+
+Pendiente: validar un archivo real en gbif.org; una primera pasada de Pl@ntNet con clave de
+verdad; una salida de verdad al Pas con audio y su análisis.

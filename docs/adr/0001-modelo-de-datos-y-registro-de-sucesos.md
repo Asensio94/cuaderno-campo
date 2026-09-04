@@ -658,7 +658,7 @@ ni Redis (cola en PostgreSQL con `SKIP LOCKED`), librería de DwC-A (biblioteca 
 
 **Migraciones:** ficheros SQL numerados con dialecto común y sobreescritura por motor solo donde
 divergen (`003_taxon.sqlite.sql`, `003_taxon.postgres.sql`), y un ejecutor de unas 40 líneas en
-cada lenguaje. Portable, auditable, sin dependencia.
+cada lenguaje. Portable, auditable, sin dependencia. Escrito: §15.18.
 
 ---
 
@@ -690,7 +690,7 @@ cuaderno-campo/
 
 | # | Entrega | Prueba que la cierra |
 |---|---|---|
-| I0 ✔ | `terminos.toml`, generadores y migraciones | DDL generado idéntico al comprometido |
+| I0 ✔ | `terminos.toml`, generadores y migraciones | DDL generado idéntico al comprometido; el ejecutor de migraciones en los dos lenguajes, con base nueva, base vieja y fichero editado (§15.18) |
 | I1 ✔ | Registro, HLC y pliegue en ambos lenguajes | P1-P4, aislamiento entre cuadernos (§4.6), conformidad entre lenguajes |
 | I2a ~ | Almacén SQLite y captura: nota, foto, GPS | convergencia de los tres caminos de proyección (§15.11) ✔ y una salida real en el Pas |
 | I2b ✔ | Audio: grabación WAV, cola de inferencia sin inferir | audio grabado y encolado, recuperado tras cerrar la aplicación |
@@ -699,6 +699,7 @@ cuaderno-campo/
 | I5 ✔ | Exportación DwC-A (§15.14) | estructura contra `meta.xml`, fuga de EXIF ✔; validador de GBIF, paso manual (403 a la API anónima) |
 | I7 ✔ | Copia de seguridad: ZIP con el registro y los medios (§15.12) | ida y vuelta entre lenguajes, restauración idempotente |
 | I6 ✔ | Trabajador BirdNET sobre una copia, clases de etiqueta (§15.16) | hipótesis, taxones y señales esperadas con modelo falso; ninguna etiqueta sin clase; los pesos reales contra `sample.wav` |
+| I6b ✔ | Conector de Pl@ntNet: la foto se sanea antes de salir de la máquina (§15.17) | la clave fuera de todo mensaje de error, los bytes subidos sin EXIF y el fichero local intacto, `retenido` sin salir, techo de rango sin taxón resuelto |
 
 I0 e I1 son el 70 % del valor y todo el riesgo: son la única parte que, mal hecha, obliga a
 tirar datos ya recogidos. Si hay que recortar, el orden de sacrificio es I3, luego I4.
@@ -1321,6 +1322,81 @@ maquillada (§1.7). Sin coordenadas no hay filtro, y también se dice.
 resto del trabajador habla con un `Protocol` de tres métodos. Las pruebas del registro corren en
 el entorno del núcleo con un modelo falso de ventanas fijas, y las de los pesos reales solo donde
 está instalado el paquete (`trabajadores/birdnet/.venv`, TensorFlow, ~600 MB, fuera del CI).
+
+### 15.17 Pl@ntNet es el primer conector que saca datos de la máquina
+
+BirdNET corre aquí: los pesos bajan una vez y el audio no se mueve. Pl@ntNet es una API, y eso
+cambia tres cosas que no se ven mirando la pantalla y que por lo tanto están probadas.
+
+*La foto se sanea antes de subirla.* El EXIF entero es local (§1.2); lo que sale por el socket
+pasa por `nucleo.exportar.exif`, y no hay camino que suba bytes sin pasar por ahí. Si un formato
+no se sabe sanear —HEIC hoy—, la foto no se envía, el informe lo dice y la ocurrencia queda
+pendiente. La prueba mira los bytes que recibe la API, no la intención: ni GPS, ni marca del
+teléfono, y el fichero local intacto después.
+
+*Las ocurrencias `retenido` no salen.* Preguntar a Pl@ntNet es exportar y sincronizar a la vez,
+así que `cdc:politicaSensibilidad` manda aquí igual que en el exportador, y para `retenido`
+significa que la foto no se sube en absoluto: difuminar coordenadas no sirve de nada cuando lo
+que viaja es la imagen.
+
+*La clave no aparece en ningún sitio salvo la URL de la petición.* Pl@ntNet no acepta cabecera de
+autenticación: la clave va en la cadena de consulta, así que **cualquier** excepción de `urllib`
+la lleva dentro del mensaje. Todo el texto de error del conector pasa por `_sin_clave`, y la
+prueba fuerza un fallo con la URL dentro y comprueba dos cosas: que la clave está en la URL —si
+no, la prueba no prueba nada— y que no está en la excepción que sale. La clave se lee de
+`CDC_PLANTNET_CLAVE`, no está en el repositorio y nunca entra en un suceso.
+
+Y cuatro decisiones que tomé yo:
+
+- **El techo de rango se aplica en el borde**, no al leer (§7). Hongos nunca por debajo de
+  género; insectos género, o familia si la confianza es baja. Cuando el nombre se recorta, el
+  `taxon.resuelto` **no** se emite: la clave de GBIF que devuelve la API es la de la especie, y
+  colgarla de un género recortado sería una resolución falsa. Queda la hipótesis sin anclar, con
+  el `dwc:verbatimIdentification` completo.
+- **No se pide el proyecto `useful`**, que clasifica las plantas por sus usos humanos: de ahí a un
+  juicio que la restricción 4 prohíbe hay un paso, y no lo doy. La lista de proyectos vetados es
+  una comprobación del constructor, no una convención.
+- **No se pregunta por ocurrencias con determinación aceptada.** No hay hipótesis que generar y
+  subir la foto no compra nada.
+- **La marca de «ya preguntado» es un TSV local, no un suceso.** Un «sin candidatos» no es un
+  taxón, y meterlo en la extensión Identification sería publicar un no-taxón en un archivo de
+  GBIF. `preguntado.tsv` vive en el estado del trabajador, junto a su almacén; `--reintentar` lo
+  ignora. Es la única marca de este proyecto que no es un suceso, y es a propósito.
+
+*Reproducibilidad, con su límite dicho.* `cdc:modeloVersion` es la cadena de versión que devuelve
+la respuesta, porque Pl@ntNet no publica pesos descargables ni una versión citable. No es lo
+mismo que `BirdNET GLOBAL_6K_V2.4` y no lo voy a disfrazar: una identificación de Pl@ntNet de hoy
+no se podrá reproducir dentro de dos años. Se registra lo que hay, y queda escrito que es menos
+de lo que se registra de BirdNET.
+
+El nivel gratuito de Pl@ntNet es de uso no comercial, como los pesos de BirdNET: restricción
+heredada, documentada en el README.
+
+### 15.18 El ejecutor de migraciones, en los dos lenguajes
+
+El §10 prometía «un ejecutor de unas 40 líneas en cada lenguaje». Ya existe, y la parte con
+trampa no es correr SQL: es que **una base nueva no debe correr ninguna migración**. El esquema
+generado sale siempre con la forma final, así que el `ALTER TABLE` que añadió una columna en su
+día fallaría encima de una base recién creada. En una base nueva se anotan como puestas con
+`corrida = 0`; en una que ya existía se corre lo que falte.
+
+De ahí que la tabla `migracion` guarde la huella SHA-256 de lo que corrió, y que el arranque **se
+pare** si un fichero ya aplicado ha cambiado de contenido. Sin esa comprobación, editar una
+migración después de aplicarla deja dos teléfonos con esquemas distintos y ningún síntoma hasta
+que sincronizan, que es el fallo que este proyecto no se puede permitir porque el registro es el
+dato. Igual si una migración aplicada desaparece del repositorio: tampoco se puede saber qué le
+pasó al esquema.
+
+Cada migración va en su transacción, de modo que si la tercera falla las dos primeras quedan
+puestas y anotadas y se reintenta desde ahí. El de Python lee `nucleo/migraciones/*.sql`; el del
+cliente lee `nucleo/generado/migraciones.ts`, generado desde esa misma carpeta, porque en el
+navegador no hay ficheros que leer y copiarlos a mano crearía la segunda fuente de verdad que el
+§3 existe para evitar. Hoy la lista está vacía y **eso también se genera**: si alguien añade un
+`.sql` y no regenera, `npm run verificar` lo dice.
+
+La carpeta vacía es información, no descuido: desde el I0 no ha hecho falta ninguna migración,
+porque lo que en otros proyectos lo sería —una columna más, un índice, un tipo de suceso nuevo—
+aquí se despliega reconstruyendo la proyección (§15.15).
 
 ---
 
