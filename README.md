@@ -218,6 +218,13 @@ aparece una etiqueta nueva sin clase, el generador falla.
 Igual que BirdNET, es otro dispositivo del cuaderno y trabaja sobre una copia. La diferencia es
 que **este sí sale de la máquina**: sube fotos a una API, y de ahí las tres reglas que lo gobiernan.
 
+**En el teléfono no hay botón de identificar, ni de plantas ni de aves.** Los dos modelos corren
+en el ordenador, sobre una copia, y devuelven un JSONL que el teléfono restaura. En la aplicación
+se ve el resultado, no el disparo: las hipótesis aparecen en el detalle de la observación con
+quién las hizo, su versión y su confianza. Lo que impide el botón no es pereza —es que la clave
+de Pl@ntNet en un cliente estático es una clave publicada, y que en el Pas no hay red a la que
+preguntar.
+
 La clave se lee del entorno y no está en el repositorio:
 
 ```bash
@@ -265,7 +272,8 @@ TypeScript sobre wa-sqlite/OPFS; captura de nota, foto, audio (WAV) con su cola,
 zona; enmienda, retractación y política de sensibilidad; determinación humana con el subárbol de
 Aves de GBIF en local; consulta de series (taxón × radio × ventana temporal) con su pantalla; copia
 de seguridad y restauración; exportación Darwin Core Archive con saneado de metadatos; interfaz
-de campo instalable; identificación de aves por canto con BirdNET en local.
+de campo instalable; identificación de aves por canto con BirdNET en local (en el ordenador: ver
+[el conector de Pl@ntNet](#plantas-por-la-foto-el-conector-de-plntnet)).
 
 Hecho también: el trabajador de BirdNET, con las etiquetas clasificadas y su vuelta al teléfono
 por copia; la pantalla de series, con su fenología por meses; y el mapa sin conexión, con el
