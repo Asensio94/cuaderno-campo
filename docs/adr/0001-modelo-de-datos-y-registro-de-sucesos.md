@@ -1427,6 +1427,46 @@ sus iconos, y a cambio de nada que no esté ya hecho. La restricción 5 existe p
 algún momento hace falta lo que sí trae —los estilos completos, con sus POI y su tipografía—, se
 añade entonces y se dice por qué.
 
+### 15.20 Los caracteres de campo de un hongo, y dónde caben
+
+Un modelo de imagen no sabrá nunca si el ejemplar azulea al corte, a qué huele, de qué color es
+la esporada ni si tiene volva, porque la foto no lo trae. Quien está delante, sí, y en hongos esa
+mitad pesa más que la foto. El encargo fue meterlos en la observación, y la pregunta era dónde.
+
+*No como columnas.* Catorce columnas nuevas en `Occurrence` para un grupo taxonómico, y luego
+otras tantas para plantas, es convertir el núcleo del archivo en un formulario. Darwin Core tiene
+el sitio previsto: `dwc:dynamicProperties`, un JSON de pares clave-valor por ocurrencia. Es un
+campo `json` como `cdc:exif`, exportable —va al `occurrence.txt` como texto compacto—, y el
+registro lo trata como opaco igual que trata el EXIF.
+
+*El vocabulario, en su propio fichero y generado a los dos lenguajes.* `nucleo/caracteres.toml`
+declara grupos (hoy uno, `hongo`) y dentro de cada grupo sus caracteres: de opción cerrada
+(himenóforo, inserción de las láminas, anillo, volva, viraje y cuánto vira, látex, sustrato), de
+texto libre (colores del sombrero, del pie y del himenóforo, olor, esporada) y enteros (diámetro
+del sombrero). De ahí salen `nucleo/generado/caracteres.ts` y `caracteres.py`: la constante que
+recorre el formulario y los tipos de la carga. El cliente no tiene un formulario de hongos escrito
+a mano; tiene un formulario de *caracteres* que pinta lo que diga el TOML. Añadir el grupo
+`planta` es añadir un bloque al TOML y regenerar. Las claves son ASCII y estables porque son el
+dato; las etiquetas son lo que se lee y se pueden cambiar sin tocar el registro.
+
+*Un parche sustituye el objeto entero.* El pliegue no fusiona por dentro de un `json`, y no se le
+enseña a hacerlo: sería una segunda semántica de parche para un solo campo, y el día que un grupo
+tuviese que desaparecer no habría forma de decirlo. El cliente manda siempre el conjunto completo
+de caracteres tras pasarlo por `limpiarCaracteres` —solo claves del vocabulario, solo opciones de
+la lista, textos no vacíos, enteros no negativos, grupos vacíos fuera— y `null` los borra. La
+proyección sube a la versión 3 por la columna nueva y se reconstruye sola (P4).
+
+*En la interfaz, plegado.* La mayoría de lo que se apunta en el Pas no es un hongo. El bloque va
+cerrado en la hoja de observación y se abre solo si ya tiene algo; en el detalle sale un resumen
+de lectura —una línea por carácter, en el orden del vocabulario— y el mismo bloque para enmendar,
+porque la esporada se sabe al día siguiente. Hasta cuatro opciones son segmentos, que se pulsan
+con el pulgar y se sueltan pulsando otra vez, porque «no lo miré» tiene que poder decirse; más de
+cuatro, un desplegable.
+
+*Lo que no hay, y no habrá.* Ni un carácter, ni una opción, ni una etiqueta habla de lo que se
+hace con el ejemplar. `pruebas/test_lexico_prohibido.py` recorre también `caracteres.toml`
+(restricción 4). Los caracteres describen; la determinación la hace quien los lee.
+
 ---
 
 ## 17. La interfaz de campo

@@ -302,6 +302,60 @@ export function pruebasDeAlmacen(motor: string, abrirBd: () => Promise<BaseDatos
     await almacen.cerrar();
   });
 
+  test('dwc:dynamicProperties: un parche sustituye el objeto entero y null lo borra (§15.20)', async () => {
+    const almacen = await almacenNuevo();
+    const e = await almacen.escritor('cuaderno-pablo', 'movil-pablo');
+    const uno = async (s: Suceso) => {
+      await almacen.anadir([s], { verificar: false });
+    };
+    await uno(
+      await e.escribir('cuaderno.declarado', 'cuaderno-pablo', {
+        'cdc:nombre': 'C',
+        'dwc:recordedBy': 'Pablo',
+      }),
+    );
+    const salida = e.nuevoId();
+    await uno(
+      await e.escribir('salida.iniciada', salida, {
+        'dwc:eventDate': '2026-10-03T08:00:00+02:00',
+        'cdc:zonaHoraria': 'Europe/Madrid',
+      }),
+    );
+    const ocurrencia = e.nuevoId();
+    const primero = { hongo: { himenoforo: 'poros', viraje: 'azul', viraje_intensidad: 'fuerte' } };
+    await uno(
+      await e.escribir('ocurrencia.registrada', ocurrencia, {
+        'dwc:eventID': salida,
+        'dwc:recordedBy': 'Pablo',
+        'dwc:decimalLatitude': 43.146,
+        'dwc:decimalLongitude': -3.935,
+        'dwc:coordinateUncertaintyInMeters': 8,
+        'dwc:dynamicProperties': primero,
+        'cdc:capturadoEn': '2026-10-03T08:12:00+02:00',
+      }),
+    );
+    const fila = async () => (await almacen.proyeccion())['proy_ocurrencia'][ocurrencia];
+    assert.deepEqual((await fila())['dwc:dynamicProperties'], primero);
+
+    // El cliente manda el conjunto completo: si el pliegue fusionase por dentro, quitar
+    // viraje_intensidad aquí no tendría efecto.
+    const segundo = { hongo: { himenoforo: 'poros', viraje: 'azul', esporada: 'pardo oliváceo' } };
+    await uno(
+      await e.escribir('ocurrencia.enmendada', ocurrencia, { 'dwc:dynamicProperties': segundo }),
+    );
+    assert.deepEqual((await fila())['dwc:dynamicProperties'], segundo);
+
+    await uno(
+      await e.escribir('ocurrencia.enmendada', ocurrencia, { 'dwc:dynamicProperties': null }),
+    );
+    assert.equal((await fila())['dwc:dynamicProperties'], undefined);
+
+    // Y la reconstrucción desde el registro da lo mismo que el camino incremental (P4).
+    await almacen.reconstruir();
+    assert.equal((await fila())['dwc:dynamicProperties'], undefined);
+    await almacen.cerrar();
+  });
+
   test('ningún campo derivado tiene columna', async () => {
     const bd = await abrirBd();
     await Almacen.abrir(bd);

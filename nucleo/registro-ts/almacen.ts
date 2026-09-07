@@ -36,7 +36,8 @@ import { canonicoValor, verificarHash } from './suceso.ts';
 import type { Suceso } from './suceso.ts';
 import { claseDe } from './validacion.ts';
 
-export const VERSION_PROYECCION = 2; // 2: Identification.cdc:medioID (ADR §15.15)
+// 2: Identification.cdc:medioID (ADR §15.15). 3: Occurrence.dwc:dynamicProperties (§15.20).
+export const VERSION_PROYECCION = 3;
 
 export const COLUMNAS_SUCESO = [
   'suceso_id',

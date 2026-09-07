@@ -1,0 +1,156 @@
+# Caracteres macroscópicos de campo: lo que se apunta delante del ejemplar y que la foto no
+# recoge —el viraje al corte, el olor, la esporada, el látex— o recoge mal —el himenóforo por
+# debajo, el anillo, la volva enterrada—. Un modelo de imagen no los tendrá nunca; quien está
+# allí, sí. Son la parte de la observación que más pesa en una determinación de hongos.
+#
+# Van dentro de `dwc:dynamicProperties` de la ocurrencia, bajo la clave del grupo:
+#
+#   {"hongo": {"himenoforo": "laminas", "viraje": "azul", "viraje_intensidad": "fuerte"}}
+#
+# Es un campo `json`, y el pliegue no fusiona por dentro de un json: un parche
+# (`ocurrencia.enmendada`) sustituye el objeto entero. El cliente manda siempre el conjunto
+# completo de caracteres, no el que cambió.
+#
+# Son descriptores morfológicos, no un juicio. Aquí no hay ni habrá nada que diga qué se hace
+# con el ejemplar (restricción 4; pruebas/test_lexico_prohibido.py recorre también este fichero).
+#
+# Las claves son las que van al registro: ASCII, minúsculas, sin acentos. Las etiquetas son lo
+# que ve quien apunta. Cambiar una clave es cambiar el dato; cambiar una etiqueta, no.
+#
+# De este fichero se generan, y NUNCA se editan a mano:
+#   nucleo/generado/caracteres.ts
+#   nucleo/generado/caracteres.py
+
+version = 1
+
+[[grupos]]
+clave = "hongo"
+etiqueta = "Hongo"
+nota = "Caracteres macroscópicos del cuerpo fructífero, en el orden en que se miran en el campo."
+
+  [[grupos.caracteres]]
+  clave = "himenoforo"
+  etiqueta = "Himenóforo"
+  tipo = "opcion"
+  opciones = [
+    ["laminas", "Láminas"],
+    ["poros", "Poros"],
+    ["pliegues", "Pliegues"],
+    ["aguijones", "Aguijones"],
+    ["liso", "Liso"],
+    ["otro", "Otro"],
+  ]
+
+  [[grupos.caracteres]]
+  clave = "insercion"
+  etiqueta = "Inserción de las láminas"
+  tipo = "opcion"
+  nota = "Cómo llegan las láminas al pie. Solo si hay láminas."
+  opciones = [
+    ["libres", "Libres"],
+    ["adnatas", "Adnatas"],
+    ["escotadas", "Escotadas"],
+    ["decurrentes", "Decurrentes"],
+  ]
+
+  [[grupos.caracteres]]
+  clave = "anillo"
+  etiqueta = "Anillo"
+  tipo = "opcion"
+  opciones = [
+    ["ausente", "Ausente"],
+    ["presente", "Presente"],
+    ["cortina", "Cortina"],
+    ["fugaz", "Restos fugaces"],
+  ]
+
+  [[grupos.caracteres]]
+  clave = "volva"
+  etiqueta = "Volva"
+  tipo = "opcion"
+  nota = "Hay que desenterrar la base del pie para verla."
+  opciones = [
+    ["ausente", "Ausente"],
+    ["presente", "Presente"],
+  ]
+
+  [[grupos.caracteres]]
+  clave = "viraje"
+  etiqueta = "Viraje al corte o al roce"
+  tipo = "opcion"
+  opciones = [
+    ["ninguno", "Ninguno"],
+    ["azul", "Azul"],
+    ["rojo", "Rojo"],
+    ["negro", "Negro"],
+    ["amarillo", "Amarillo"],
+    ["verde", "Verde"],
+    ["otro", "Otro"],
+  ]
+
+  [[grupos.caracteres]]
+  clave = "viraje_intensidad"
+  etiqueta = "Cuánto vira"
+  tipo = "opcion"
+  nota = "Solo si vira."
+  opciones = [
+    ["leve", "Leve"],
+    ["moderado", "Moderado"],
+    ["fuerte", "Fuerte"],
+  ]
+
+  [[grupos.caracteres]]
+  clave = "latex"
+  etiqueta = "Látex"
+  tipo = "opcion"
+  opciones = [
+    ["ninguno", "Ninguno"],
+    ["blanco", "Blanco"],
+    ["coloreado", "Coloreado"],
+    ["acuoso", "Acuoso"],
+  ]
+
+  [[grupos.caracteres]]
+  clave = "sustrato"
+  etiqueta = "Sustrato"
+  tipo = "opcion"
+  opciones = [
+    ["suelo", "Suelo"],
+    ["madera", "Madera"],
+    ["hojarasca", "Hojarasca"],
+    ["estiercol", "Estiércol"],
+    ["musgo", "Musgo"],
+    ["otro", "Otro"],
+  ]
+
+  [[grupos.caracteres]]
+  clave = "color_sombrero"
+  etiqueta = "Color del sombrero"
+  tipo = "texto"
+
+  [[grupos.caracteres]]
+  clave = "color_pie"
+  etiqueta = "Color del pie"
+  tipo = "texto"
+
+  [[grupos.caracteres]]
+  clave = "color_himenoforo"
+  etiqueta = "Color del himenóforo"
+  tipo = "texto"
+
+  [[grupos.caracteres]]
+  clave = "sombrero_mm"
+  etiqueta = "Sombrero (mm)"
+  tipo = "entero"
+  nota = "Diámetro del sombrero."
+
+  [[grupos.caracteres]]
+  clave = "olor"
+  etiqueta = "Olor"
+  tipo = "texto"
+
+  [[grupos.caracteres]]
+  clave = "esporada"
+  etiqueta = "Esporada"
+  tipo = "texto"
+  nota = "El color, y se sabe al día siguiente: se apunta como enmienda."

@@ -24,6 +24,7 @@ import {
   enmendarOcurrencia,
   estado,
   fijarSensibilidad,
+  limpiarCaracteres,
   iniciarSalida,
   lugares,
   proponerIdentificacion,
@@ -36,8 +37,10 @@ import type {
   Lugar,
   Nota,
   Observacion,
+  PropiedadesDinamicas,
   Sensibilidad,
 } from './campo.ts';
+import { FormularioCaracteres, ResumenCaracteres, gruposApuntados } from './caracteres.tsx';
 import { exportarCopia, importarCopia } from './copia.ts';
 import type { Restaurada } from './copia.ts';
 import { useGps } from './gps.ts';
@@ -807,6 +810,11 @@ function TarjetaObservacion({
         <span className="entrada-fila">
           <span className="hora">{hora(o.capturadoEn, desde)}</span>
           {o.cuantos !== undefined && <span className="etiqueta">{o.cuantos} ej.</span>}
+          {gruposApuntados(o.caracteres).map((g) => (
+            <span key={g} className="etiqueta">
+              {g}
+            </span>
+          ))}
           {o.sensibilidad !== 'publico' && (
             <span className="etiqueta candado">
               <Icono n="candado" tam={13} />
@@ -1020,6 +1028,7 @@ function HojaObservacion({
   const [sonido, setSonido] = useState<Grabacion | null>(null);
   const [vista, setVista] = useState<string | null>(null);
   const [sensibilidad, setSensibilidad] = useState<Sensibilidad>('publico');
+  const [caracteres, setCaracteres] = useState<PropiedadesDinamicas>({});
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -1045,6 +1054,7 @@ function HojaObservacion({
       posicion: gps.posicion,
       comentario: comentario.trim() || undefined,
       cuantos: cuantos ?? undefined,
+      caracteres,
       foto: foto ?? undefined,
       sonido: sonido
         ? { blob: sonido.blob, empezadaEn: sonido.empezadaEn, ajustes: sonido.ajustes }
@@ -1139,6 +1149,8 @@ function HojaObservacion({
         </label>
       </div>
 
+      <FormularioCaracteres valor={caracteres} cambiar={setCaracteres} />
+
       <div className="campo">
         <span>Posición pública</span>
         <Segmentos valor={sensibilidad} cambiar={setSensibilidad} />
@@ -1223,6 +1235,7 @@ function Detalle({
   const [comentario, setComentario] = useState(o.comentario ?? '');
   const [cuantos, setCuantos] = useState<number | null>(o.cuantos ?? null);
   const [sensibilidad, setSensibilidad] = useState<Sensibilidad>(o.sensibilidad);
+  const [caracteres, setCaracteres] = useState<PropiedadesDinamicas>(o.caracteres ?? {});
   const [retractando, setRetractando] = useState(false);
   const [motivo, setMotivo] = useState('');
   const [guardando, setGuardando] = useState(false);
@@ -1231,14 +1244,20 @@ function Detalle({
   const cambioTexto = comentario.trim() !== (o.comentario ?? '');
   const cambioCuantos = cuantos !== (o.cuantos ?? null);
   const cambioSensibilidad = sensibilidad !== o.sensibilidad;
-  const hayCambios = cambioTexto || cambioCuantos || cambioSensibilidad;
+  // Los dos lados pasan por `limpiarCaracteres`, que escribe las claves en el orden del
+  // vocabulario: así la comparación no depende de cómo vinieran ordenadas del almacén.
+  const caracteresLimpios = limpiarCaracteres(caracteres);
+  const cambioCaracteres =
+    JSON.stringify(caracteresLimpios ?? null) !== JSON.stringify(o.caracteres ?? null);
+  const hayCambios = cambioTexto || cambioCuantos || cambioSensibilidad || cambioCaracteres;
 
   const guardar = async () => {
     setGuardando(true);
-    if (cambioTexto || cambioCuantos) {
+    if (cambioTexto || cambioCuantos || cambioCaracteres) {
       await enmendarOcurrencia(o.id, {
         ...(cambioTexto ? { comentario: comentario.trim() } : {}),
         ...(cambioCuantos ? { cuantos } : {}),
+        ...(cambioCaracteres ? { caracteres: caracteresLimpios ?? null } : {}),
       });
     }
     if (cambioSensibilidad) await fijarSensibilidad(o.id, sensibilidad);
@@ -1329,6 +1348,8 @@ function Detalle({
         </div>
       </div>
 
+      <ResumenCaracteres valor={o.caracteres} />
+
       <Hipotesis o={o} observador={observador} hecho={refrescar} />
 
       {determinada !== undefined && (
@@ -1358,6 +1379,7 @@ function Detalle({
           <span>Cuántos</span>
           <Contador valor={cuantos} cambiar={setCuantos} />
         </div>
+        <FormularioCaracteres valor={caracteres} cambiar={setCaracteres} />
         <div className="campo">
           <span>Posición pública</span>
           <Segmentos valor={sensibilidad} cambiar={setSensibilidad} />

@@ -52,7 +52,8 @@ from .pliegue import (
 )
 from .suceso import Suceso, canonico_valor
 
-VERSION_PROYECCION = 2  # 2: Identification.cdc:medioID (ADR §15.15)
+# 2: Identification.cdc:medioID (ADR §15.15). 3: Occurrence.dwc:dynamicProperties (§15.20).
+VERSION_PROYECCION = 3
 ESQUEMA = RAIZ_NUCLEO / "generado" / "001_esquema.sqlite.sql"
 
 COLUMNAS_SUCESO = (

@@ -1299,3 +1299,61 @@ select:focus {
 .mapa-elegir .tenue {
   font-size: 0.8rem;
 }
+
+/* --- Caracteres de campo (§15.20): un desplegable por grupo ------------------------- */
+.plegable {
+  border: 1px solid var(--linea);
+  border-radius: var(--radio);
+  padding: 0 0.85rem;
+  margin-bottom: 1rem;
+  background: var(--lienzo);
+}
+.plegable > summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: var(--toque);
+  padding: 0.6rem 0;
+  cursor: pointer;
+  font-weight: 650;
+  font-size: 0.9rem;
+}
+.plegable > summary::-webkit-details-marker {
+  display: none;
+}
+.plegable > summary small {
+  font-weight: 450;
+  color: var(--tenue);
+  margin-left: auto;
+}
+.plegable > summary::after {
+  content: '+';
+  font-weight: 450;
+  font-size: 1.2rem;
+  line-height: 1;
+  color: var(--tenue);
+}
+.plegable[open] > summary::after {
+  content: '−';
+}
+.plegable[open] > summary {
+  border-bottom: 1px solid var(--linea);
+  margin-bottom: 0.85rem;
+}
+.plegable > .ayuda {
+  margin: 0 0 0.85rem;
+}
+.plegable > label,
+.plegable > .campo {
+  display: block;
+  margin-bottom: 0.85rem;
+}
+.plegable label small,
+.plegable .campo small {
+  display: block;
+  margin-top: 0.3rem;
+}
+.datos.caracteres strong {
+  font-weight: 600;
+}

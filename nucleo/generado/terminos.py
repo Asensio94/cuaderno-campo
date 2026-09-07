@@ -162,6 +162,8 @@ class FilaOccurrence(TypedDict):
     # dwc:degreeOfEstablishment: captive para los taxones domésticos del §7.1
     occurrence_remarks: NotRequired[str | None]
     # dwc:occurrenceRemarks
+    dynamic_properties: NotRequired[Any | None]
+    # dwc:dynamicProperties: caracteres de campo por grupo (nucleo/caracteres.toml, §15.20); un parche sustituye el objeto entero
     politica_sensibilidad: Literal["publico", "difuso_1km", "difuso_10km", "retenido"]
     # cdc:politicaSensibilidad
     capturado_en: NotRequired[str | None]

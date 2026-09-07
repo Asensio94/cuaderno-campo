@@ -115,6 +115,7 @@ campos = [
   { termino = "dwc:establishmentMeans", tipo = "texto" },
   { termino = "dwc:degreeOfEstablishment", tipo = "texto", nota = "captive para los taxones domésticos del §7.1" },
   { termino = "dwc:occurrenceRemarks", tipo = "texto" },
+  { termino = "dwc:dynamicProperties", tipo = "json", nota = "caracteres de campo por grupo (nucleo/caracteres.toml, §15.20); un parche sustituye el objeto entero" },
   { termino = "cdc:politicaSensibilidad", tipo = "texto", requerido = true, predeterminado = "publico", enum = ["publico", "difuso_1km", "difuso_10km", "retenido"], exportar = false },
   { termino = "cdc:capturadoEn", tipo = "instante", nota = "eje temporal de captura (ADR §2)" },
   { termino = "cdc:retractada", tipo = "booleano", requerido = true, predeterminado = false, exportar = false },

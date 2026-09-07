@@ -7,6 +7,8 @@
 // emitir otro. Es la restricción 2 vista desde arriba.
 
 import { conectar, nuevoId } from './almacen/cliente.ts';
+import { CARACTERES } from '../../nucleo/generado/caracteres.ts';
+import type { PropiedadesDinamicas } from '../../nucleo/generado/caracteres.ts';
 import type { Fila } from '../../nucleo/registro-ts/pliegue.ts';
 import type { ConsultaSerie, PuntoSerie } from '../../nucleo/registro-ts/taxones.ts';
 import type { Posicion } from './gps.ts';
@@ -148,6 +150,9 @@ export interface Anotacion {
   readonly observador: string;
   readonly comentario?: string;
   readonly cuantos?: number;
+  /** Caracteres de campo por grupo (§15.20). Se limpian antes de emitir: ni vacíos ni claves
+   * fuera del vocabulario. */
+  readonly caracteres?: PropiedadesDinamicas;
   readonly foto?: Blob;
   /** Grabación WAV de `audio.ts`, con su instante de inicio y los ajustes que aplicó el
    * navegador. */
@@ -167,6 +172,7 @@ export async function anotar(a: Anotacion): Promise<string> {
   const medio = a.foto ? await guardar(a.foto) : null;
   const metadatos = a.foto ? await exif.leer(a.foto) : null;
   const sonido = a.sonido ? await guardar(a.sonido.blob) : null;
+  const caracteres = limpiarCaracteres(a.caracteres);
   const ocurrencia = nuevoId();
   await emitir('ocurrencia.registrada', ocurrencia, {
     'dwc:eventID': a.salidaId,
@@ -182,6 +188,7 @@ export async function anotar(a: Anotacion): Promise<string> {
       : { 'cdc:altitudGpsExactitud': a.posicion.altitudPrecisionM }),
     ...(a.cuantos === undefined ? {} : { 'dwc:individualCount': a.cuantos }),
     ...(a.comentario ? { 'dwc:occurrenceRemarks': a.comentario } : {}),
+    ...(caracteres ? { 'dwc:dynamicProperties': caracteres } : {}),
     'cdc:capturadoEn': new Date().toISOString(),
   });
   if (medio) {
@@ -252,13 +259,52 @@ export const SENSIBILIDADES: readonly Sensibilidad[] = [
  * tocó, para que el parche diga exactamente lo que cambió y nada más. */
 export async function enmendarOcurrencia(
   ocurrenciaId: string,
-  parche: { comentario?: string; cuantos?: number | null },
+  parche: {
+    comentario?: string;
+    cuantos?: number | null;
+    /** El conjunto completo, no el que cambió: el campo es `json` y el pliegue lo sustituye
+     * entero. `null` borra todos los caracteres. */
+    caracteres?: PropiedadesDinamicas | null;
+  },
 ): Promise<void> {
   const carga: Record<string, unknown> = {};
   if (parche.comentario !== undefined) carga['dwc:occurrenceRemarks'] = parche.comentario;
   if (parche.cuantos !== undefined) carga['dwc:individualCount'] = parche.cuantos;
+  if (parche.caracteres !== undefined) {
+    carga['dwc:dynamicProperties'] =
+      parche.caracteres === null ? null : (limpiarCaracteres(parche.caracteres) ?? null);
+  }
   if (Object.keys(carga).length === 0) return;
   await emitir('ocurrencia.enmendada', ocurrenciaId, carga);
+}
+
+/** Deja en `dwc:dynamicProperties` solo lo que el vocabulario admite: claves conocidas, opciones
+ * de la lista, textos no vacíos, enteros no negativos. Los grupos sin nada desaparecen y si no
+ * queda ninguno devuelve `undefined`. Es lo que hace que la carga no dependa de qué controles
+ * tocó el usuario y en qué orden. */
+export function limpiarCaracteres(
+  valor: PropiedadesDinamicas | undefined,
+): PropiedadesDinamicas | undefined {
+  if (!valor) return undefined;
+  const bruto = valor as Readonly<Record<string, unknown>>;
+  const salida: Record<string, Record<string, string | number>> = {};
+  for (const g of CARACTERES) {
+    const grupo = bruto[g.clave];
+    if (!grupo || typeof grupo !== 'object') continue;
+    const limpio: Record<string, string | number> = {};
+    for (const c of g.caracteres) {
+      const v = (grupo as Record<string, unknown>)[c.clave];
+      if (c.tipo === 'opcion') {
+        if (typeof v === 'string' && c.opciones?.some((o) => o.clave === v)) limpio[c.clave] = v;
+      } else if (c.tipo === 'entero') {
+        if (typeof v === 'number' && Number.isInteger(v) && v >= 0) limpio[c.clave] = v;
+      } else if (typeof v === 'string' && v.trim()) {
+        limpio[c.clave] = v.trim();
+      }
+    }
+    if (Object.keys(limpio).length > 0) salida[g.clave] = limpio;
+  }
+  return Object.keys(salida).length > 0 ? (salida as PropiedadesDinamicas) : undefined;
 }
 
 /** La ofuscación pública de la posición, por observación. Se aplica al exportar y al
@@ -395,6 +441,8 @@ export interface Observacion {
   readonly capturadoEn?: string;
   readonly comentario?: string;
   readonly cuantos?: number;
+  /** Caracteres de campo por grupo, tal como los guarda el registro (§15.20). */
+  readonly caracteres?: PropiedadesDinamicas;
   readonly retractada: boolean;
   readonly motivoRetractacion?: string;
   readonly sensibilidad: Sensibilidad;
@@ -422,6 +470,10 @@ const texto = (f: Fila, t: string): string | undefined =>
   typeof f[t] === 'string' ? (f[t] as string) : undefined;
 const numero = (f: Fila, t: string): number | undefined =>
   typeof f[t] === 'number' ? (f[t] as number) : undefined;
+const objeto = (f: Fila, t: string): PropiedadesDinamicas | undefined =>
+  f[t] !== null && typeof f[t] === 'object' && !Array.isArray(f[t])
+    ? (f[t] as PropiedadesDinamicas)
+    : undefined;
 
 /** El estado que pinta la interfaz, leído de la proyección. Filtra por cuaderno porque la
  * proyección no lo hace: el mismo almacén puede tener sucesos de otros cuadernos en cuanto
@@ -522,6 +574,7 @@ export async function estado(verSalida?: string): Promise<EstadoCampo> {
         capturadoEn: texto(f, 'cdc:capturadoEn'),
         comentario: texto(f, 'dwc:occurrenceRemarks'),
         cuantos: numero(f, 'dwc:individualCount'),
+        caracteres: limpiarCaracteres(objeto(f, 'dwc:dynamicProperties')),
         retractada: Boolean(f['cdc:retractada']),
         motivoRetractacion: texto(f, 'cdc:motivoRetractacion'),
         sensibilidad: (texto(f, 'cdc:politicaSensibilidad') ?? 'publico') as Sensibilidad,
@@ -561,6 +614,7 @@ export async function estado(verSalida?: string): Promise<EstadoCampo> {
 // --- Series: lo mismo, otra vez, en otro sitio (§6) -----------------------------------
 
 export type { PuntoSerie };
+export type { PropiedadesDinamicas };
 
 /** Los sitios que el cuaderno conoce: uno por salida con observaciones, en el centro de las
  * suyas. No son `sitio.declarado` —la aplicación todavía no los emite—, sino lo que se deduce

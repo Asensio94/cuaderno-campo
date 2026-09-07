@@ -523,6 +523,15 @@ export const REGISTRO: Registro = {
           "derivado": false
         },
         {
+          "termino": "dwc:dynamicProperties",
+          "columna": "dynamic_properties",
+          "tipo": "json",
+          "clave": false,
+          "requerido": false,
+          "exportar": true,
+          "derivado": false
+        },
+        {
           "termino": "cdc:politicaSensibilidad",
           "columna": "politica_sensibilidad",
           "tipo": "texto",
@@ -1475,6 +1484,8 @@ export interface FilaOccurrence {
   degree_of_establishment?: string | null;
   /** dwc:occurrenceRemarks */
   occurrence_remarks?: string | null;
+  /** dwc:dynamicProperties — caracteres de campo por grupo (nucleo/caracteres.toml, §15.20); un parche sustituye el objeto entero */
+  dynamic_properties?: unknown | null;
   /** cdc:politicaSensibilidad */
   politica_sensibilidad: 'publico' | 'difuso_1km' | 'difuso_10km' | 'retenido';
   /** cdc:capturadoEn — eje temporal de captura (ADR §2) */

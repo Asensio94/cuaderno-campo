@@ -102,6 +102,7 @@ CREATE INDEX IF NOT EXISTS "proy_salida_salida_compartida_id" ON "proy_salida" (
 -- minimum_elevation_in_meters: solo si se ha derivado de un MDE
 -- organism_quantity: para escalas de abundancia y cobertura
 -- degree_of_establishment: captive para los taxones domésticos del §7.1
+-- dynamic_properties: caracteres de campo por grupo (nucleo/caracteres.toml, §15.20); un parche sustituye el objeto entero
 -- capturado_en: eje temporal de captura (ADR §2)
 CREATE TABLE IF NOT EXISTS "proy_ocurrencia" (
   "occurrence_id" TEXT NOT NULL PRIMARY KEY,
@@ -126,6 +127,7 @@ CREATE TABLE IF NOT EXISTS "proy_ocurrencia" (
   "establishment_means" TEXT,
   "degree_of_establishment" TEXT,
   "occurrence_remarks" TEXT,
+  "dynamic_properties" TEXT,
   "politica_sensibilidad" TEXT NOT NULL DEFAULT 'publico',
   "capturado_en" TEXT,
   "retractada" INTEGER NOT NULL DEFAULT 0,

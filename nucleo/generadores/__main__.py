@@ -14,13 +14,14 @@ import sys
 from pathlib import Path
 
 from ..registro.migraciones import cargar as cargar_migraciones
-from . import ddl, esquema_ts, meta_xml, migraciones_ts, tipos_py, tipos_ts
+from . import caracteres, ddl, esquema_ts, meta_xml, migraciones_ts, tipos_py, tipos_ts
 from .registro import RAIZ_NUCLEO, Registro, cargar
 
 DESTINO = RAIZ_NUCLEO / "generado"
 
 
 def artefactos(registro: Registro) -> dict[str, str]:
+    vocabulario = caracteres.cargar()
     return {
         "001_esquema.sqlite.sql": ddl.generar(registro, "sqlite"),
         "001_esquema.postgres.sql": ddl.generar(registro, "postgres"),
@@ -29,6 +30,8 @@ def artefactos(registro: Registro) -> dict[str, str]:
         "migraciones.ts": migraciones_ts.generar(cargar_migraciones("sqlite")),
         "terminos.py": tipos_py.generar(registro),
         "meta.xml": meta_xml.generar(registro),
+        "caracteres.ts": caracteres.generar_ts(vocabulario),
+        "caracteres.py": caracteres.generar_py(vocabulario),
     }
 
 

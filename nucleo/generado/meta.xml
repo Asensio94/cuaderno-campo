@@ -27,18 +27,19 @@
     <field index="18" term="http://rs.tdwg.org/dwc/terms/establishmentMeans" />
     <field index="19" term="http://rs.tdwg.org/dwc/terms/degreeOfEstablishment" />
     <field index="20" term="http://rs.tdwg.org/dwc/terms/occurrenceRemarks" />
-    <field index="21" term="https://cuaderno.local/terms/capturadoEn" />
-    <field index="22" term="http://rs.tdwg.org/dwc/terms/scientificName" />
-    <field index="23" term="http://rs.tdwg.org/dwc/terms/taxonRank" />
-    <field index="24" term="http://rs.tdwg.org/dwc/terms/taxonID" />
-    <field index="25" term="http://rs.tdwg.org/dwc/terms/identifiedBy" />
-    <field index="26" term="http://rs.tdwg.org/dwc/terms/dateIdentified" />
-    <field index="27" term="http://rs.tdwg.org/dwc/terms/eventDate" />
-    <field index="28" term="http://rs.tdwg.org/dwc/terms/locality" />
-    <field index="29" term="http://rs.tdwg.org/dwc/terms/locationID" />
-    <field index="30" term="http://rs.tdwg.org/dwc/terms/samplingProtocol" />
-    <field index="31" term="http://rs.tdwg.org/dwc/terms/dataGeneralizations" />
-    <field index="32" term="http://rs.tdwg.org/dwc/terms/informationWithheld" />
+    <field index="21" term="http://rs.tdwg.org/dwc/terms/dynamicProperties" />
+    <field index="22" term="https://cuaderno.local/terms/capturadoEn" />
+    <field index="23" term="http://rs.tdwg.org/dwc/terms/scientificName" />
+    <field index="24" term="http://rs.tdwg.org/dwc/terms/taxonRank" />
+    <field index="25" term="http://rs.tdwg.org/dwc/terms/taxonID" />
+    <field index="26" term="http://rs.tdwg.org/dwc/terms/identifiedBy" />
+    <field index="27" term="http://rs.tdwg.org/dwc/terms/dateIdentified" />
+    <field index="28" term="http://rs.tdwg.org/dwc/terms/eventDate" />
+    <field index="29" term="http://rs.tdwg.org/dwc/terms/locality" />
+    <field index="30" term="http://rs.tdwg.org/dwc/terms/locationID" />
+    <field index="31" term="http://rs.tdwg.org/dwc/terms/samplingProtocol" />
+    <field index="32" term="http://rs.tdwg.org/dwc/terms/dataGeneralizations" />
+    <field index="33" term="http://rs.tdwg.org/dwc/terms/informationWithheld" />
   </core>
   <extension encoding="UTF-8" fieldsTerminatedBy="\t" linesTerminatedBy="\n" fieldsEnclosedBy="" ignoreHeaderLines="1" rowType="http://rs.tdwg.org/dwc/terms/Identification">
     <files>

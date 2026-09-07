@@ -263,6 +263,24 @@ Límite conocido: Pl@ntNet no publica una versión de pesos citable, así que `c
 guarda la cadena de versión que devuelve la respuesta. Es menos reproducible que BirdNET, y queda
 dicho en vez de disimulado.
 
+## Hongos: los caracteres que la foto no trae
+
+Con un hongo, la foto es la mitad. La otra mitad se apunta delante del ejemplar: **cómo vira al
+corte y cuánto** (azul, rojo, negro…), el **himenóforo** (láminas, poros, pliegues, aguijones), la
+**inserción de las láminas**, el **anillo**, la **volva**, el **látex**, el **sustrato**, los
+colores del sombrero, del pie y del himenóforo, el **olor**, el diámetro y la **esporada**, que se
+sabe al día siguiente y se apunta como enmienda.
+
+En la hoja de observación hay un bloque «Hongo» plegado —la mayoría de lo que se apunta no es un
+hongo— que se abre y se rellena en unos toques. En el detalle sale el resumen y se puede corregir.
+Todo viaja en `dwc:dynamicProperties`, el término que Darwin Core reserva para esto, y sale así
+al archivo de exportación. El vocabulario está en
+[`nucleo/caracteres.toml`](nucleo/caracteres.toml) y de él se genera el formulario; añadir un
+grupo para plantas es añadir un bloque ahí ([ADR §15.20](docs/adr/0001-modelo-de-datos-y-registro-de-sucesos.md#1520-los-caracteres-de-campo-de-un-hongo-y-dónde-caben)).
+
+Son descriptores. Ni aquí ni en ningún otro sitio de la aplicación hay nada que diga qué hacer con
+el ejemplar: ver [lo que este programa no hace](#lo-que-este-programa-no-hace).
+
 ## Estado
 
 Fase 0, en curso.
@@ -284,6 +302,9 @@ ejecutor de migraciones del registro en los dos lenguajes; los topónimos del ma
 empaquetada para que rotule en modo avión; y dos arreglos de la hoja de observación —el chip del
 taxón elegido y el enlace de restaurar copia salían con la tinta equivocada, invisibles en los dos
 temas, y ahora la hipótesis que va en cabeza se ve en la lista con su marca de «sin aceptar».
+
+Hecho después: los [caracteres de campo de los hongos](#hongos-los-caracteres-que-la-foto-no-trae)
+en la observación, con su vocabulario generado a los dos lenguajes y su enmienda.
 
 Pendiente: validar un archivo real en gbif.org; una primera pasada de Pl@ntNet con clave de
 verdad; una salida de verdad al Pas con audio y su análisis.
