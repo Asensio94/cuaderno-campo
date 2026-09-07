@@ -633,6 +633,7 @@ tamaño, que hay que medir y no estimar.
 | maplibre-gl, pmtiles | mapa offline (§9) |
 | exifr | EXIF de la foto: hora del disparo, cámara y, si la trae, su propia posición |
 | vitest | pruebas del cliente (el núcleo se prueba con el corredor de Node, §15.10) |
+| @tensorflow/tfjs | BirdNET en el teléfono (§15.21): el único runtime que carga la exportación oficial del modelo, un LayersModel con una capa propia; WebGL dentro de un trabajador |
 
 Deliberadamente **no**: librería de componentes, gestor de estado (el pliegue *es* el estado),
 librería de fechas (`Intl` nativo), librería de UUID (`crypto.randomUUID` más unas 20 líneas
@@ -1468,6 +1469,62 @@ hace con el ejemplar. `pruebas/test_lexico_prohibido.py` recorre también `carac
 (restricción 4). Los caracteres describen; la determinación la hace quien los lee.
 
 ---
+
+### 15.21 BirdNET en el teléfono: los mismos pesos, otro ejecutor
+
+El §15.16 dejó BirdNET en el ordenador porque los pesos son 49 MB bajo CC BY-NC-SA y el modelo
+pedía TensorFlow. Las dos cosas siguen siendo verdad y ninguna impide correrlo en el teléfono; lo
+que las resuelve es tratar el modelo como se trata el mapa (§15.19): un fichero de terceros que
+se mete una vez y que la aplicación no lleva dentro.
+
+*El paquete.* `datos/birdnet/empaquetar.py` pega la exportación oficial de BirdNET a
+TensorFlow.js —el `model.json` con sus trece fragmentos, `labels.json` y el modelo de metadatos
+con sus ocho— en un solo fichero `.modelo`: la marca `CDCMODEL`, la longitud de la cabecera, la
+cabecera JSON (modelo, pesos, número de etiquetas, licencia, atribución y el índice de partes) y
+las partes seguidas. 82 MB. Entra en OPFS, en `modelos/`, por el selector de ficheros o por una
+dirección con reanudación, con el mismo código que los mosaicos (`cliente/src/ficheros.ts`,
+extraído de `mapa/mosaicos.ts` para no escribirlo dos veces). No está en el repositorio ni en
+Pages: se genera en casa y viaja por cable. Los mapas y los modelos son lo único que la
+aplicación borra.
+
+*El ejecutor.* `@tensorflow/tfjs` entra en la lista del §10, fijado a versión exacta. No había
+manera de evitarlo: BirdNET publica el modelo para el navegador como LayersModel de Keras con
+una capa propia (`MelSpecLayerSimple`, el espectrograma de mel con su no linealidad aprendida),
+y esa capa hay que registrarla en el mismo runtime que carga el grafo; ni ONNX Runtime ni TFLite
+en el navegador leen ese formato, y convertir el modelo a otro es mantener una conversión propia
+de unos pesos ajenos. Corre en un trabajador sobre WebGL (`OffscreenCanvas`); el backend WASM de
+TensorFlow.js no tiene el núcleo `Complex` que necesita la STFT y queda descartado; sin WebGL cae
+a CPU y se dice en pantalla. La primera pasada compila los sombreadores (unos 3 s en el
+portátil); las siguientes, 200 ms por ventana de 3 s.
+
+Consecuencia, declarada aquí para que no parezca un descuido: habrá dos runtimes en el cliente.
+Los modelos de imagen para plantas y hongos que vienen detrás (PlantCLEF, Danish Fungi) son
+transformadores de visión publicados en PyTorch y su camino al navegador es ONNX; forzarlos a
+TensorFlow.js sería otra conversión propia. Dos runtimes por dos formatos de origen salen más
+baratos que una conversión mantenida a mano. `onnxruntime-web` se pedirá cuando toque, no ahora.
+
+*Quién firma.* Las hipótesis del teléfono llevan `dwc:identifiedBy = birdnet-tfjs` y
+`cdc:modeloVersion = 2.4`; las del ordenador, `birdnet-analyzer`. Mismos pesos, ejecutores
+distintos: si un día discrepan hay que poder saber cuál dijo qué. Para la cola sí son uno:
+`pendientes` en el trabajador de Python da por oído lo que oyó cualquiera de los dos con esos
+pesos, y la pantalla hace lo mismo, así que un audio no se analiza dos veces por haber pasado
+por los dos aparatos.
+
+*Lo que se escribe es lo mismo.* `cliente/src/birdnet/logica.ts` calca `sucesos_de` del
+trabajador —ventanas de 3 s sin solape, la mejor ventana por etiqueta, hasta cinco hipótesis
+sobre 0,25, la mejor sola y dicho si ninguna llega, las señales aparte— y su prueba calca los
+casos de la de Python hasta el texto de `dwc:identificationRemarks`. El filtro geográfico y
+fenológico viaja dentro del paquete (el modelo de metadatos) para que el teléfono filtre con la
+misma lista que el ordenador. Una hipótesis de modelo cita ahora su medio también en la
+proyección del cliente (`Identificacion.medioId`), que es lo que permite saber qué audio está
+por oír.
+
+*Comprobado.* Con el `sample.wav` que trae BirdNET: Python da *Acanthis cabaret* 0,944 y *A.
+flammea* 0,800; el navegador, 0,9448 y 0,7999. La lista del filtro para el Pas en la semana 37
+coincide en 164 especies y difiere en una, *Emberiza schoeniclus*, que en el TFLite del
+ordenador puntúa 0,0297 y en la exportación a TensorFlow.js pasa de 0,03: dos exportaciones de
+los mismos pesos no son iguales bit a bit y en el borde del umbral se nota. Se acepta y queda
+anotado; cada hipótesis lleva escrito qué filtro se le aplicó.
 
 ## 17. La interfaz de campo
 

@@ -385,6 +385,83 @@ export async function rechazarIdentificacion(
   });
 }
 
+// --- Lo que dice un modelo que corre aquí ----------------------------------------------------
+
+export interface HipotesisDeModelo {
+  readonly etiqueta: string;
+  readonly confianza: number;
+  readonly topK: readonly { etiqueta: string; confianza: number }[];
+  readonly observaciones: string;
+  readonly taxon?: { gbifKey: number; nombreAceptado: string; rango: string };
+}
+
+export interface SenalDeModelo {
+  readonly etiqueta: string;
+  readonly clase: string;
+  readonly confianza: number;
+  readonly desplazamiento: number;
+}
+
+export interface AnalisisAcustico {
+  readonly ocurrenciaId: string;
+  readonly medioId: string;
+  readonly salidaId: string;
+  /** `dwc:identifiedBy`: el ejecutor, no los pesos. */
+  readonly identificadoPor: string;
+  /** La versión de los pesos, sin la V (`2.4`). */
+  readonly version: string;
+  readonly versionArbol: string;
+  readonly hipotesis: readonly HipotesisDeModelo[];
+  readonly senales: readonly SenalDeModelo[];
+}
+
+/** Escribe lo que un modelo acústico ha sacado de un audio: las mismas cargas, término por
+ * término, que emite `trabajadores/birdnet/trabajo.py`, para que el registro no sepa si el
+ * modelo corrió en el ordenador o en este teléfono salvo por quién firma. Ninguna hipótesis se
+ * acepta aquí (restricción 3). */
+export async function anotarAnalisisAcustico(a: AnalisisAcustico): Promise<{ hipotesis: number; resueltas: number; senales: number }> {
+  const ahora = isoLocal();
+  let resueltas = 0;
+  for (const h of a.hipotesis) {
+    const id = nuevoId();
+    await emitir('identificacion.propuesta', id, {
+      'dwc:occurrenceID': a.ocurrenciaId,
+      'cdc:medioID': a.medioId,
+      'dwc:verbatimIdentification': h.etiqueta,
+      'dwc:identifiedBy': a.identificadoPor,
+      'cdc:modeloVersion': a.version,
+      'cdc:confianza': h.confianza,
+      'cdc:topK': h.topK,
+      'dwc:dateIdentified': ahora,
+      'dwc:identificationRemarks': h.observaciones,
+    });
+    if (h.taxon) {
+      await emitir('taxon.resuelto', id, {
+        'dwc:scientificName': h.taxon.nombreAceptado,
+        'dwc:taxonRank': h.taxon.rango,
+        'dwc:taxonID': `https://www.gbif.org/species/${h.taxon.gbifKey}`,
+        'cdc:gbifTaxonKey': h.taxon.gbifKey,
+        'cdc:versionArbolGbif': a.versionArbol,
+      });
+      resueltas += 1;
+    }
+  }
+  for (const s of a.senales) {
+    await emitir('senal.detectada', nuevoId(), {
+      'dwc:eventID': a.salidaId,
+      'cdc:medioID': a.medioId,
+      'dwc:measurementType': `acousticDetection:${s.clase}`,
+      'dwc:measurementValue': s.etiqueta,
+      'cdc:claseEtiqueta': s.clase,
+      'cdc:confianza': s.confianza,
+      'cdc:desplazamientoSegundos': s.desplazamiento,
+      'dwc:measurementMethod': `BirdNET ${a.version}`,
+      'dwc:measurementDeterminedDate': ahora,
+    });
+  }
+  return { hipotesis: a.hipotesis.length, resueltas, senales: a.senales.length };
+}
+
 // --- Lecturas -------------------------------------------------------------------------
 
 export interface Cuaderno {
@@ -423,6 +500,8 @@ export interface Identificacion {
   readonly rango?: string;
   readonly gbifKey?: number;
   readonly por: string;
+  /** El medio del que salió, si la propuso un modelo sobre un audio o una foto. */
+  readonly medioId?: string;
   /** Presente solo en las hipótesis de un modelo. Es la versión de los pesos. */
   readonly modeloVersion?: string;
   readonly confianza?: number;
@@ -431,6 +510,13 @@ export interface Identificacion {
   readonly estado: EstadoIdentificacion;
   readonly calificador?: string;
   readonly observaciones?: string;
+}
+
+export interface Medio {
+  readonly id: string;
+  readonly hash: string;
+  readonly tipo: 'StillImage' | 'Sound';
+  readonly creado?: string;
 }
 
 export interface Observacion {
@@ -448,6 +534,8 @@ export interface Observacion {
   readonly sensibilidad: Sensibilidad;
   readonly fotos: readonly string[];
   readonly sonidos: readonly string[];
+  /** Los mismos, con su `cdc:medioID`: es lo que cita una hipótesis de modelo. */
+  readonly medios: readonly Medio[];
   /** Todas las hipótesis, de modelos y de personas, en orden de fecha. */
   readonly identificaciones: readonly Identificacion[];
   /** La aceptada, si la hay. Como máximo una: lo garantiza el pliegue. */
@@ -548,6 +636,7 @@ export async function estado(verSalida?: string): Promise<EstadoCampo> {
         rango: texto(f, 'dwc:taxonRank'),
         gbifKey: numero(f, 'cdc:gbifTaxonKey'),
         por: String(f['dwc:identifiedBy']),
+        medioId: texto(f, 'cdc:medioID'),
         modeloVersion: texto(f, 'cdc:modeloVersion'),
         confianza: numero(f, 'cdc:confianza'),
         topK: Array.isArray(f['cdc:topK'])
@@ -580,6 +669,14 @@ export async function estado(verSalida?: string): Promise<EstadoCampo> {
         sensibilidad: (texto(f, 'cdc:politicaSensibilidad') ?? 'publico') as Sensibilidad,
         fotos: mediosDe(ocurrenciaId, 'StillImage'),
         sonidos: mediosDe(ocurrenciaId, 'Sound'),
+        medios: medios
+          .filter((f) => f['dwc:occurrenceID'] === ocurrenciaId)
+          .map((f) => ({
+            id: String(f['cdc:medioID']),
+            hash: String(f['cdc:hashSha256']),
+            tipo: f['dc:type'] as 'StillImage' | 'Sound',
+            creado: texto(f, 'dcterms:created'),
+          })),
         identificaciones,
         determinacion: identificaciones.find((i) => i.estado === 'accepted'),
       };

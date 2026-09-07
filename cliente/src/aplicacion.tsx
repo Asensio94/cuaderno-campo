@@ -62,8 +62,10 @@ import {
   porcentaje,
 } from './piezas.tsx';
 import type { Eleccion } from './piezas.tsx';
+import { PanelBirdnet } from './birdnet/panel.tsx';
 import { PantallaMapa } from './pantalla-mapa.tsx';
 import type { PuntoMapa } from './pantalla-mapa.tsx';
+import { PantallaModelos } from './pantalla-modelos.tsx';
 import { PantallaSeries } from './pantalla-series.tsx';
 import type { SemillaSerie } from './pantalla-series.tsx';
 import { asegurarTaxones, versionArbol } from './taxones.ts';
@@ -637,6 +639,7 @@ function Inicio({
   ver,
   series,
   mapa,
+  modelos,
   recargar,
 }: {
   campo: EstadoCampo;
@@ -645,6 +648,7 @@ function Inicio({
   ver: (id: string) => void;
   series: () => void;
   mapa: () => void;
+  modelos: () => void;
   recargar: () => void;
 }) {
   const [localidad, setLocalidad] = useState('');
@@ -725,6 +729,15 @@ function Inicio({
           <span className="etiqueta">Mapa</span>
           <strong>¿Dónde he estado?</strong>
           <span className="tenue">Sin cobertura, con el mapa metido en el aparato</span>
+        </span>
+        <Icono n="flecha" />
+      </button>
+
+      <button type="button" className="tarjeta series" onClick={modelos}>
+        <span className="tarjeta-texto">
+          <span className="etiqueta">Modelos</span>
+          <strong>Oír los audios aquí</strong>
+          <span className="tenue">BirdNET en el aparato, sin cobertura, con los pesos metidos</span>
         </span>
         <Icono n="flecha" />
       </button>
@@ -1218,6 +1231,8 @@ function Detalle({
   hecho,
   refrescar,
   verSerie,
+  salidaId,
+  abrirModelos,
   cerrar,
 }: {
   o: Observacion;
@@ -1230,6 +1245,9 @@ function Detalle({
   /** «Esto, ¿cuándo más lo he visto aquí?». Solo con determinación resuelta contra GBIF: sin
    * clave no hay subárbol que recorrer, y una serie por texto libre no es una serie. */
   verSerie: (s: SemillaSerie) => void;
+  /** La salida a la que pertenece: `dwc:eventID` de las señales que deje BirdNET. */
+  salidaId: string;
+  abrirModelos: () => void;
   cerrar: () => void;
 }) {
   const [comentario, setComentario] = useState(o.comentario ?? '');
@@ -1335,6 +1353,8 @@ function Detalle({
         </div>
       )}
 
+      <PanelBirdnet o={o} salidaId={salidaId} hecho={refrescar} abrirModelos={abrirModelos} />
+
       <div className="datos">
         <div>
           <span className="tenue">Posición</span>
@@ -1432,7 +1452,8 @@ type Pantalla =
       /** A dónde se vuelve al cerrar: se llega desde el inicio y desde una observación. */
       readonly volverA: 'inicio' | 'salida';
     }
-  | { readonly tipo: 'mapa'; readonly volverA: 'inicio' | 'salida' };
+  | { readonly tipo: 'mapa'; readonly volverA: 'inicio' | 'salida' }
+  | { readonly tipo: 'modelos'; readonly volverA: 'inicio' | 'salida' };
 
 export function Aplicacion() {
   const [campo, setCampo] = useState<EstadoCampo | null>(null);
@@ -1473,7 +1494,10 @@ export function Aplicacion() {
   // centrada en «aquí», que sin posición no tiene centro, o con el mapa abierto, donde saber
   // dónde estoy es justamente para lo que se abre.
   const gps = useGps(
-    campo?.abierta != null || pantalla.tipo === 'series' || pantalla.tipo === 'mapa',
+    campo?.abierta != null ||
+      pantalla.tipo === 'series' ||
+      pantalla.tipo === 'mapa' ||
+      pantalla.tipo === 'modelos',
   );
 
   if (fallo !== null) return <Atascado motivo={fallo} reintentar={recargar} />;
@@ -1506,6 +1530,11 @@ export function Aplicacion() {
         }}
       />
     );
+  }
+
+  if (pantalla.tipo === 'modelos') {
+    const volver = pantalla.volverA;
+    return <PantallaModelos cerrar={() => setPantalla({ tipo: volver })} />;
   }
 
   if (pantalla.tipo === 'series') {
@@ -1548,6 +1577,7 @@ export function Aplicacion() {
           }}
           series={() => setPantalla({ tipo: 'series', volverA: 'inicio' })}
           mapa={() => setPantalla({ tipo: 'mapa', volverA: 'inicio' })}
+          modelos={() => setPantalla({ tipo: 'modelos', volverA: 'inicio' })}
           recargar={recargar}
         />
       </>
@@ -1602,6 +1632,8 @@ export function Aplicacion() {
           hecho={alGuardar}
           refrescar={recargar}
           verSerie={(semilla) => setPantalla({ tipo: 'series', semilla, volverA: 'salida' })}
+          salidaId={campo.salida.id}
+          abrirModelos={() => setPantalla({ tipo: 'modelos', volverA: 'salida' })}
           cerrar={() => setPantalla({ tipo: 'salida' })}
         />
       )}

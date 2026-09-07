@@ -18,3 +18,8 @@ trabajadores/*/estado/
 # Los mosaicos se extraen del planeta de Protomaps, no se versionan (datos/mosaicos/extraer.py).
 datos/mosaicos/*.pmtiles
 datos/mosaicos/*.parcial
+
+# Los pesos de BirdNET empaquetados para el teléfono (datos/birdnet/empaquetar.py): 82 MB bajo
+# CC BY-NC-SA que se generan en casa y se meten en el aparato como un mapa.
+datos/birdnet/*/*.modelo
+datos/birdnet/*/*.modelo.parcial

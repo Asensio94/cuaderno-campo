@@ -2,8 +2,9 @@
 
 La cola no existe como estructura: es una consulta a la proyección (ADR-0001 §7). Un medio está
 pendiente si es un `Sound` adjunto de una ocurrencia no retractada del cuaderno y no hay ninguna
-`identificacion.propuesta` de este modelo, con estos pesos, que lo cite en `cdc:medioID`. Por eso
-el trabajador emite siempre al menos una hipótesis por audio: es también la marca de «ya oído».
+`identificacion.propuesta` de este modelo, con estos pesos, que lo cite en `cdc:medioID`, la haya
+firmado este trabajador o el teléfono (`birdnet-tfjs`: los mismos pesos con TensorFlow.js). Por eso
+los dos emiten siempre al menos una hipótesis por audio: es también la marca de «ya oído».
 
 Todo lo que aquí se emite pasa por el `Escritor` normal, con el `dispositivo_id` del trabajador, y
 entra en el almacén con `anadir`. Ningún atajo.
@@ -25,6 +26,9 @@ from .etiquetas import TAXON_SILVESTRE, Etiquetas
 from .modelo import Contexto, Modelo, Ventana, semana_birdnet
 
 IDENTIFICADO_POR = "birdnet-analyzer"
+# Los mismos pesos corren también en el teléfono (`cliente/src/birdnet`, firma `birdnet-tfjs`).
+# Lo que uno ha oído no lo vuelve a oír el otro: dos ejecutores, una sola marca de «ya oído».
+EJECUTORES = frozenset({IDENTIFICADO_POR, "birdnet-tfjs"})
 MIN_CONFIANZA = 0.25  # el mismo que trae BirdNET por defecto
 MAX_HIPOTESIS = 5
 DECIMALES = 4
@@ -55,7 +59,7 @@ def pendientes(almacen: Almacen, cuaderno_id: str, version_pesos: str) -> list[P
     oidos = {
         i.get("cdc:medioID")
         for i in almacen.filas("proy_identificacion")
-        if i.get("dwc:identifiedBy") == IDENTIFICADO_POR
+        if i.get("dwc:identifiedBy") in EJECUTORES
         and i.get("cdc:modeloVersion") == version_pesos
     }
     resultado: list[Pendiente] = []

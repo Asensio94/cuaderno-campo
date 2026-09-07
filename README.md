@@ -96,7 +96,9 @@ piezas:
   pero **sus pesos están bajo CC BY-NC-SA 4.0: uso no comercial, atribución y misma licencia para
   las obras derivadas.** Esa restricción se hereda: cualquier cosa que este cuaderno haga con los
   pesos de BirdNET queda igual de limitada, y basta ella sola para que el conjunto no pueda
-  explotarse comercialmente. Documentado aquí como exige el encargo.
+  explotarse comercialmente. Documentado aquí como exige el encargo. Por eso los pesos no van
+  con la aplicación ni en el repositorio: para el teléfono se empaquetan en casa (`.modelo`) y se
+  meten como un mapa, y la licencia viaja escrita en la cabecera del paquete.
 - **Pl@ntNet** requiere clave de API con cuota, y su nivel gratuito es **no comercial**. La clave
   va en variables de entorno, **nunca en el repositorio**.
 - **OpenStreetMap y Protomaps**: los mosaicos del mapa salen del basemap de Protomaps, construido
@@ -170,9 +172,9 @@ Medido, no estimado (construcción `20260904`, zoom 0-14):
 El fichero se mete desde la propia aplicación (hoja **Mapas**, dentro del mapa): o se elige del
 almacenamiento del teléfono, o se trae de una dirección, con la descarga reanudable a trozos de
 4 MB. La aplicación elige el archivo por su caja, así que con los dos dentro el cambio de valle no
-se pide. Y **los mosaicos son lo único que este programa borra**: son datos de terceros que se
-vuelven a traer, mientras que una foto de campo, no. Si la cuota aprieta, se ofrece borrar mapas y
-jamás observaciones.
+se pide. Y **los mosaicos y los modelos son lo único que este programa borra**: son datos de
+terceros que se vuelven a traer, mientras que una foto de campo, no. Si la cuota aprieta, se
+ofrece borrar mapas y modelos, y jamás observaciones.
 
 El estilo son nueve capas escritas a mano (`cliente/src/mapa/estilo.ts`), en claro y en oscuro,
 con los caminos y el agua por delante de las carreteras, que es lo que se mira andando. Encima van
@@ -187,11 +189,16 @@ o en griego pediría un rango que no está y saldría sin pintar.
 
 Los ficheros `.pmtiles` no se versionan: se generan con el comando de arriba.
 
-## Aves por el canto: el trabajador de BirdNET
+## Aves por el canto: BirdNET en el ordenador y en el teléfono
 
-BirdNET no corre en el teléfono. Corre en el ordenador, sobre una copia, y es **otro dispositivo
-del mismo cuaderno**: escribe sucesos con su propio identificador y los devuelve en un JSONL que
-el teléfono restaura como cualquier otra copia.
+BirdNET corre en dos sitios con los mismos pesos. En el ordenador, sobre una copia, como **otro
+dispositivo del mismo cuaderno**: escribe sucesos con su propio identificador y los devuelve en
+un JSONL que el teléfono restaura como cualquier otra copia. Y en el teléfono, si se le mete el
+modelo, con un botón en el detalle de cada observación que tenga audio. Los dos escriben lo mismo
+—hasta cinco hipótesis sin aceptar, su taxón resuelto y las señales que no son aves— y firman
+distinto (`birdnet-analyzer` y `birdnet-tfjs`); lo que uno ha oído, el otro no lo repite.
+
+### En el ordenador
 
 ```bash
 python -m venv trabajadores/birdnet/.venv
@@ -213,17 +220,40 @@ que genera `datos/birdnet/emparejar.py` contra el subárbol local de Aves y la A
 filas están curadas a mano, las que no son un nombre científico. Si al subir de versión de pesos
 aparece una etiqueta nueva sin clase, el generador falla.
 
+### En el teléfono
+
+El modelo es un fichero, como el mapa: 82 MB que no van con la aplicación (los pesos son
+CC BY-NC-SA, ver [licencias](#licencias-y-restricciones-heredadas)) y que se preparan una vez en
+el ordenador, con el mismo entorno del trabajador:
+
+```bash
+trabajadores/birdnet/.venv/Scripts/python datos/birdnet/empaquetar.py
+```
+
+Sale `datos/birdnet/V2.4/birdnet-2.4.modelo`: la exportación oficial de BirdNET a TensorFlow.js
+—modelo, etiquetas y el modelo de metadatos del filtro geográfico— pegada en un solo fichero con
+una cabecera que dice qué es y bajo qué licencia va. Se mete desde la hoja **Modelos** del inicio,
+del almacenamiento del teléfono o de una dirección con descarga reanudable, igual que un mapa. A
+partir de ahí, en el detalle de una observación con audio aparece **Oír con BirdNET**: la primera
+vez tarda unos segundos en compilar para la gráfica, y luego oye cada ventana de 3 s en una
+fracción de segundo. Sin WebGL cae a la CPU y lo dice. El filtro geográfico y fenológico es el
+mismo que aplica el ordenador, con las coordenadas de la observación y la semana del audio.
+
+Comprobado con el `sample.wav` que trae BirdNET: el ordenador y el teléfono dan las mismas
+etiquetas con las mismas confianzas a cuatro decimales. Los detalles, y la única discrepancia
+encontrada en el filtro, en el ADR §15.21.
+
 ## Plantas por la foto: el conector de Pl@ntNet
 
 Igual que BirdNET, es otro dispositivo del cuaderno y trabaja sobre una copia. La diferencia es
 que **este sí sale de la máquina**: sube fotos a una API, y de ahí las tres reglas que lo gobiernan.
 
-**En el teléfono no hay botón de identificar, ni de plantas ni de aves.** Los dos modelos corren
-en el ordenador, sobre una copia, y devuelven un JSONL que el teléfono restaura. En la aplicación
-se ve el resultado, no el disparo: las hipótesis aparecen en el detalle de la observación con
-quién las hizo, su versión y su confianza. Lo que impide el botón no es pereza —es que la clave
-de Pl@ntNet en un cliente estático es una clave publicada, y que en el Pas no hay red a la que
-preguntar.
+**En el teléfono no hay botón de identificar plantas.** El conector corre en el ordenador, sobre
+una copia, y devuelve un JSONL que el teléfono restaura: en la aplicación se ve el resultado, no
+el disparo, con quién hizo cada hipótesis, su versión y su confianza. Lo que impide el botón no
+es pereza —es que la clave de Pl@ntNet en un cliente estático es una clave publicada, y que en
+el Pas no hay red a la que preguntar. Las aves sí se oyen en el teléfono (arriba): ahí el modelo
+es un fichero que se mete, no una API a la que llamar.
 
 La clave se lee del entorno y no está en el repositorio:
 
@@ -304,7 +334,9 @@ taxón elegido y el enlace de restaurar copia salían con la tinta equivocada, i
 temas, y ahora la hipótesis que va en cabeza se ve en la lista con su marca de «sin aceptar».
 
 Hecho después: los [caracteres de campo de los hongos](#hongos-los-caracteres-que-la-foto-no-trae)
-en la observación, con su vocabulario generado a los dos lenguajes y su enmienda.
+en la observación, con su vocabulario generado a los dos lenguajes y su enmienda; y
+[BirdNET dentro del teléfono](#aves-por-el-canto-birdnet-en-el-ordenador-y-en-el-teléfono), con
+los pesos empaquetados como un mapa y el mismo filtro geográfico que el ordenador.
 
 Pendiente: validar un archivo real en gbif.org; una primera pasada de Pl@ntNet con clave de
 verdad; una salida de verdad al Pas con audio y su análisis.

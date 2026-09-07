@@ -10,20 +10,36 @@
 // descomprimirlo. Miles de ficheros sueltos en OPFS serían miles de manejadores y una copia de
 // veinte minutos.
 //
-// **Los mosaicos son lo único que esta aplicación borra.** Son datos de terceros que se pueden
-// volver a traer; el registro y los medios, no (restricción 2). Cuando el disco apriete, se
-// tiran mosaicos y se avisa, nunca observaciones.
+// **Los mosaicos y los modelos son lo único que esta aplicación borra.** Son datos de terceros
+// que se pueden volver a traer; el registro y los medios, no (restricción 2). Cuando el disco
+// apriete, se tiran mosaicos y se avisa, nunca observaciones. La copia, la descarga reanudable
+// y el hueco están en `../ficheros.ts`, compartidos con los modelos.
 
 import { PMTiles, type RangeResponse, type Source } from 'pmtiles';
 
+import {
+  ErrorFicheros,
+  afianzar,
+  borrar as borrarFichero,
+  carpeta as carpetaDe,
+  comprobarHueco,
+  copiar,
+  hueco,
+  limpiarNombre as limpiar,
+  ocupado,
+  reanudables as reanudablesDe,
+  traer,
+} from '../ficheros.ts';
+import type { Avance } from '../ficheros.ts';
+
+export { HOLGURA_MINIMA, mb } from '../ficheros.ts';
+export type { Avance } from '../ficheros.ts';
+
 const DIRECTORIO = 'mosaicos';
 const SUFIJO = '.pmtiles';
-/** Lo que se deja libre después de meter un mapa. Un teléfono sin hueco no puede ni escribir el
- * registro, y el registro es lo que no se puede perder. */
-export const HOLGURA_MINIMA = 200 * 1024 * 1024;
-const TROZO = 4 * 1024 * 1024;
+const CONSEJO = 'Borra algún mapa.';
 
-export class ErrorMosaicos extends Error {}
+export class ErrorMosaicos extends ErrorFicheros {}
 
 export interface Mapa {
   /** El nombre del fichero en OPFS, que es también su identificador en el estilo. */
@@ -42,10 +58,7 @@ export interface Mapa {
   readonly parcial: boolean;
 }
 
-async function carpeta(): Promise<FileSystemDirectoryHandle> {
-  const raiz = await navigator.storage.getDirectory();
-  return raiz.getDirectoryHandle(DIRECTORIO, { create: true });
-}
+const carpeta = () => carpetaDe(DIRECTORIO);
 
 // --- La fuente: OPFS por rangos --------------------------------------------------------
 
@@ -176,36 +189,14 @@ export interface Espacio {
 }
 
 export async function espacio(): Promise<Espacio> {
-  const { usage = 0, quota = 0 } = await navigator.storage.estimate();
+  const h = await hueco();
   let mosaicos = 0;
   try {
-    const dir = await carpeta();
-    for await (const entrada of dir.values()) {
-      if (entrada.kind === 'file') mosaicos += (await (entrada as FileSystemFileHandle).getFile()).size;
-    }
+    mosaicos = await ocupado(await carpeta());
   } catch {
     /* todavía no hay carpeta */
   }
-  return { usado: usage, cuota: quota, libre: Math.max(0, quota - usage), mosaicos };
-}
-
-/** Antes de traer un mapa. Lanza en vez de devolver un booleano porque el sitio donde se
- * comprueba es el sitio donde hay que rendirse: seguir escribiendo hasta que el navegador tire
- * el `QuotaExceededError` deja un fichero a medias y el aviso llega en inglés. */
-async function comprobarHueco(bytes: number, yaEscritos = 0): Promise<void> {
-  const { libre } = await espacio();
-  const necesario = bytes - yaEscritos + HOLGURA_MINIMA;
-  if (libre < necesario) {
-    throw new ErrorMosaicos(
-      `no cabe: hacen falta ${mb(necesario)} libres y hay ${mb(libre)}. Borra algún mapa.`,
-    );
-  }
-}
-
-export function mb(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} kB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-  return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
+  return { ...h, mosaicos };
 }
 
 // --- Meter un mapa --------------------------------------------------------------------
@@ -224,69 +215,25 @@ function comprobarCabecera(cabecera: ArrayBuffer): void {
   }
 }
 
-function limpiarNombre(nombre: string): string {
-  const raiz =
-    nombre
-      .replace(/\.pmtiles$/i, '')
-      .normalize('NFD')
-      .replace(/[̀-ͯ]/g, '')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')
-      .slice(0, 40) || 'mapa';
-  return `${raiz}${SUFIJO}`;
-}
+const limpiarNombre = (nombre: string) => limpiar(nombre, SUFIJO, 'mapa');
 
-export type Avance = (escritos: number, total: number) => void;
-
-/** Copia a OPFS el fichero que el usuario ha elegido. Hace falta copiarlo: en Android el
- * selector da un `File` prestado que no sobrevive al cierre de la aplicación, y el mapa tiene
- * que estar dentro para funcionar en el monte. */
+/** Copia a OPFS el fichero que el usuario ha elegido y comprueba que es un mapa antes de gastar
+ * 121 MB de disco. */
 export async function importar(fichero: File, avance?: Avance): Promise<Mapa> {
   comprobarCabecera(await fichero.slice(0, 127).arrayBuffer());
-  await comprobarHueco(fichero.size);
+  await comprobarHueco(fichero.size, 0, CONSEJO);
   const nombre = limpiarNombre(fichero.name);
   const dir = await carpeta();
-  const provisional = `${nombre}.parcial`;
-  const manejador = await dir.getFileHandle(provisional, { create: true });
-  const flujo = await manejador.createWritable();
-  try {
-    for (let desde = 0; desde < fichero.size; desde += TROZO) {
-      await flujo.write(await fichero.slice(desde, Math.min(desde + TROZO, fichero.size)).arrayBuffer());
-      avance?.(Math.min(desde + TROZO, fichero.size), fichero.size);
-    }
-    await flujo.close();
-  } catch (error) {
-    await flujo.abort().catch(() => {});
-    await dir.removeEntry(provisional).catch(() => {});
-    throw new ErrorMosaicos(`no se pudo copiar el mapa: ${String(error)}`);
-  }
-  return terminar(dir, provisional, nombre);
+  await copiar(dir, fichero, `${nombre}.parcial`, avance);
+  return terminar(dir, nombre);
 }
 
 /** Renombra el provisional al definitivo y comprueba que el resultado se lee. Si no se lee, se
  * borra: un mapa roto que aparece en la lista como bueno es peor que no tener mapa. */
-async function terminar(
-  dir: FileSystemDirectoryHandle,
-  provisional: string,
-  nombre: string,
-): Promise<Mapa> {
-  const manejador = await dir.getFileHandle(provisional);
-  const movible = manejador as FileSystemFileHandle & { move?: (n: string) => Promise<void> };
-  if (typeof movible.move === 'function') {
-    await movible.move(nombre);
-  } else {
-    // Sin `move` toca copiar otra vez. Solo pasa en navegadores que no son Chromium; en el
-    // teléfono, que es Chrome, se renombra.
-    const destino = await dir.getFileHandle(nombre, { create: true });
-    const flujo = await destino.createWritable();
-    await flujo.write(await (await manejador.getFile()).arrayBuffer());
-    await flujo.close();
-    await dir.removeEntry(provisional).catch(() => {});
-  }
-  await dir.removeEntry(`${nombre}.json`).catch(() => {});
+async function terminar(dir: FileSystemDirectoryHandle, nombre: string): Promise<Mapa> {
+  const manejador = await afianzar(dir, `${nombre}.parcial`, nombre);
   olvidar(nombre);
-  const bytes = (await (await dir.getFileHandle(nombre)).getFile()).size;
+  const bytes = (await manejador.getFile()).size;
   try {
     return await describir(nombre, bytes);
   } catch (error) {
@@ -297,126 +244,25 @@ async function terminar(
 
 // --- Traerlo por la red, y reanudarlo -------------------------------------------------
 
-interface Pendiente {
-  url: string;
-  etag: string | null;
-  total: number;
-}
-
-async function leerPendiente(dir: FileSystemDirectoryHandle, nombre: string): Promise<Pendiente | null> {
-  try {
-    const fichero = await (await dir.getFileHandle(`${nombre}.json`)).getFile();
-    return JSON.parse(await fichero.text()) as Pendiente;
-  } catch {
-    return null;
-  }
-}
-
-async function escribirPendiente(
-  dir: FileSystemDirectoryHandle,
-  nombre: string,
-  pendiente: Pendiente,
-): Promise<void> {
-  const manejador = await dir.getFileHandle(`${nombre}.json`, { create: true });
-  const flujo = await manejador.createWritable();
-  await flujo.write(JSON.stringify(pendiente));
-  await flujo.close();
-}
-
 /** Los mapas a medio traer, con lo que llevan. */
 export async function reanudables(): Promise<{ nombre: string; escritos: number; total: number }[]> {
-  const dir = await carpeta();
-  const lista: { nombre: string; escritos: number; total: number }[] = [];
-  for await (const entrada of dir.values()) {
-    if (entrada.kind !== 'file' || !entrada.name.endsWith('.parcial')) continue;
-    const nombre = entrada.name.slice(0, -'.parcial'.length);
-    const pendiente = await leerPendiente(dir, nombre);
-    lista.push({
-      nombre,
-      escritos: (await (entrada as FileSystemFileHandle).getFile()).size,
-      total: pendiente?.total ?? 0,
-    });
-  }
-  return lista;
+  return reanudablesDe(await carpeta());
 }
 
-/**
- * Trae un mapa por HTTP, reanudable. Pensado para 121 MB por una conexión que se corta: lo que
- * ya está escrito se queda escrito, y la siguiente vez se pide desde ahí con `Range`.
- *
- * Si el fichero del servidor ha cambiado —el `ETag` no coincide— se empieza de cero en vez de
- * pegar la segunda mitad de un mapa a la primera mitad de otro.
- */
+/** Trae un mapa por HTTP, reanudable (`ficheros.ts`), y lo comprueba antes de darlo por bueno. */
 export async function descargar(url: string, avance?: Avance): Promise<Mapa> {
   const dir = await carpeta();
   const nombre = limpiarNombre(new URL(url).pathname.split('/').pop() || 'mapa');
-  const provisional = `${nombre}.parcial`;
-
-  const cabeza = await fetch(url, { method: 'HEAD' });
-  if (!cabeza.ok) throw new ErrorMosaicos(`el servidor dice ${cabeza.status} al pedir el mapa`);
-  const total = Number(cabeza.headers.get('content-length') ?? 0);
-  const etag = cabeza.headers.get('etag');
-  if (cabeza.headers.get('accept-ranges') !== 'bytes' && total > 0) {
-    // Se puede seguir, pero sin reanudación: si se corta, se empieza de cero.
-    console.warn('el servidor no admite rangos: la descarga no será reanudable');
-  }
-
-  const anterior = await leerPendiente(dir, nombre);
-  let escritos = 0;
-  try {
-    escritos = (await (await dir.getFileHandle(provisional)).getFile()).size;
-  } catch {
-    escritos = 0;
-  }
-  if (anterior === null || anterior.url !== url || (etag !== null && anterior.etag !== etag)) {
-    escritos = 0;
-  }
-  await comprobarHueco(total, escritos);
-  await escribirPendiente(dir, nombre, { url, etag, total });
-
-  const respuesta = await fetch(url, {
-    headers: escritos > 0 ? { Range: `bytes=${escritos}-` } : {},
-  });
-  if (escritos > 0 && respuesta.status !== 206) {
-    // El servidor ignoró el rango: manda el fichero entero, así que se escribe desde el
-    // principio en vez de duplicar lo que ya había.
-    escritos = 0;
-  }
-  if (!respuesta.ok || respuesta.body === null) {
-    throw new ErrorMosaicos(`el servidor dice ${respuesta.status} al traer el mapa`);
-  }
-
-  const manejador = await dir.getFileHandle(provisional, { create: true });
-  const flujo = await manejador.createWritable({ keepExistingData: escritos > 0 });
-  if (escritos > 0) await flujo.seek(escritos);
-  const lector = respuesta.body.getReader();
-  try {
-    for (;;) {
-      const { done, value } = await lector.read();
-      if (done) break;
-      await flujo.write(value);
-      escritos += value.byteLength;
-      avance?.(escritos, total);
-    }
-    await flujo.close();
-  } catch (error) {
-    await flujo.close().catch(() => {});
-    throw new ErrorMosaicos(
-      `la descarga se cortó con ${mb(escritos)} de ${mb(total)}; se puede reanudar (${String(error)})`,
-    );
-  }
-  const fichero = await (await dir.getFileHandle(provisional)).getFile();
+  await traer(dir, url, nombre, CONSEJO, avance);
+  const fichero = await (await dir.getFileHandle(`${nombre}.parcial`)).getFile();
   comprobarCabecera(await fichero.slice(0, 127).arrayBuffer());
-  return terminar(dir, provisional, nombre);
+  return terminar(dir, nombre);
 }
 
 /** Lo único que esta aplicación borra. */
 export async function borrar(nombre: string): Promise<void> {
-  const dir = await carpeta();
   olvidar(nombre);
-  await dir.removeEntry(nombre).catch(() => {});
-  await dir.removeEntry(`${nombre}.parcial`).catch(() => {});
-  await dir.removeEntry(`${nombre}.json`).catch(() => {});
+  await borrarFichero(await carpeta(), nombre);
 }
 
 // --- El protocolo que usa MapLibre ----------------------------------------------------

@@ -31,6 +31,8 @@
   "include": ["src", "../nucleo/registro-ts"],
   "exclude": [
     "src/almacen/worker.ts",
+    "src/birdnet/trabajador.ts",
+    "src/**/*.test.ts",
     "../nucleo/registro-ts/sqlite-node.ts",
     "../nucleo/registro-ts/**/*.test.ts",
     "../nucleo/registro-ts/**/*.pruebas.ts"

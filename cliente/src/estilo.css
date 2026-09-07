@@ -1357,3 +1357,19 @@ select:focus {
 .datos.caracteres strong {
   font-weight: 600;
 }
+
+/* --- BirdNET en el aparato (§15.21) ------------------------------------------------------ */
+.birdnet .campo > span:first-child {
+  font-weight: 650;
+  font-size: 0.9rem;
+}
+.birdnet-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  min-height: var(--toque);
+}
+.birdnet-fila .secundario {
+  flex: 0 0 auto;
+}

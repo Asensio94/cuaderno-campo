@@ -227,6 +227,21 @@ def test_una_vez_oido_deja_de_estar_pendiente(cuaderno, etiquetas) -> None:
     assert len(pendientes(cuaderno["almacen"], "cuaderno-pablo", "3.0")) == 1
 
 
+def test_lo_que_oyo_el_telefono_con_los_mismos_pesos_no_se_vuelve_a_oir(cuaderno, etiquetas) -> None:
+    """El teléfono firma `birdnet-tfjs`; con los mismos pesos, su hipótesis vale de «ya oído»."""
+    e = cuaderno["almacen"].escritor("cuaderno-pablo", "movil-pablo")
+    cuaderno["almacen"].anadir([e.escribir("identificacion.propuesta", e.nuevo_id(), {
+        "dwc:occurrenceID": cuaderno["ocurrencia"], "cdc:medioID": cuaderno["medio"],
+        "dwc:verbatimIdentification": PETIRROJO, "dwc:identifiedBy": "birdnet-tfjs",
+        "cdc:modeloVersion": etiquetas.version_pesos, "cdc:confianza": 0.7,
+        "dwc:dateIdentified": "2025-08-24T09:00:00+02:00"})])
+    assert pendientes(cuaderno["almacen"], "cuaderno-pablo", etiquetas.version_pesos) == []
+    informe, modelo = correr_falso(cuaderno, etiquetas)
+    assert informe.sucesos == 0 and modelo.analizados == []
+    # Con otros pesos, sí habría que volver a oírlo.
+    assert len(pendientes(cuaderno["almacen"], "cuaderno-pablo", "3.0")) == 1
+
+
 def test_el_filtro_geografico_quita_lo_que_no_esta_en_la_lista(cuaderno, etiquetas) -> None:
     correr_falso(cuaderno, etiquetas, modelo=ModeloFalso(lista={PETIRROJO, CHOCHIN}))
     hipotesis = hipotesis_de(cuaderno["almacen"], cuaderno["medio"])

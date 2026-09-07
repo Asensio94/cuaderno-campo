@@ -4,7 +4,12 @@
   "compilerOptions": {
     "lib": ["ES2022", "WebWorker"]
   },
-  "include": ["src/almacen/worker.ts", "src/wa-sqlite.d.ts", "../nucleo/registro-ts"],
+  "include": [
+    "src/almacen/worker.ts",
+    "src/birdnet/trabajador.ts",
+    "src/wa-sqlite.d.ts",
+    "../nucleo/registro-ts"
+  ],
   "exclude": [
     "../nucleo/registro-ts/sqlite-node.ts",
     "../nucleo/registro-ts/**/*.test.ts",

@@ -28,8 +28,8 @@ import type { GeoJSONSource, Map as MapaGl } from 'maplibre-gl';
 import urlObrero from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 
 import type { EstadoGps } from './gps.ts';
+import { ErrorFicheros } from './ficheros.ts';
 import {
-  ErrorMosaicos,
   type Avance,
   type Espacio,
   type Mapa,
@@ -458,7 +458,7 @@ function HojaMapas({
       await recargar();
       setSitio(await espacio());
     } catch (error) {
-      setFallo(error instanceof ErrorMosaicos ? error.message : String(error));
+      setFallo(error instanceof ErrorFicheros ? error.message : String(error));
     } finally {
       setTrabajando(null);
       setAvance(null);
