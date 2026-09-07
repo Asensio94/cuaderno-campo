@@ -421,6 +421,47 @@ export interface AnalisisAcustico {
  * acepta aquí (restricción 3). */
 export async function anotarAnalisisAcustico(a: AnalisisAcustico): Promise<{ hipotesis: number; resueltas: number; senales: number }> {
   const ahora = isoLocal();
+  const resueltas = await emitirHipotesis(a, ahora);
+  for (const s of a.senales) {
+    await emitir('senal.detectada', nuevoId(), {
+      'dwc:eventID': a.salidaId,
+      'cdc:medioID': a.medioId,
+      'dwc:measurementType': `acousticDetection:${s.clase}`,
+      'dwc:measurementValue': s.etiqueta,
+      'cdc:claseEtiqueta': s.clase,
+      'cdc:confianza': s.confianza,
+      'cdc:desplazamientoSegundos': s.desplazamiento,
+      'dwc:measurementMethod': `BirdNET ${a.version}`,
+      'dwc:measurementDeterminedDate': ahora,
+    });
+  }
+  return { hipotesis: a.hipotesis.length, resueltas, senales: a.senales.length };
+}
+
+export interface AnalisisDeImagen {
+  readonly ocurrenciaId: string;
+  readonly medioId: string;
+  readonly salidaId: string;
+  /** `dwc:identifiedBy`: el modelo y su ejecutor (`plantclef2024-onnx`). */
+  readonly identificadoPor: string;
+  readonly version: string;
+  readonly versionArbol: string;
+  readonly hipotesis: readonly HipotesisDeModelo[];
+}
+
+/** Escribe lo que un modelo de imagen ha sacado de una foto (§15.23): las mismas cargas que las
+ * hipótesis acústicas, sin señales. Ninguna se acepta aquí (restricción 3). */
+export async function anotarAnalisisDeImagen(a: AnalisisDeImagen): Promise<{ hipotesis: number; resueltas: number }> {
+  const resueltas = await emitirHipotesis(a, isoLocal());
+  return { hipotesis: a.hipotesis.length, resueltas };
+}
+
+/** Una `identificacion.propuesta` por hipótesis y, si el modelo trae la clave de GBIF, su
+ * `taxon.resuelto`. Devuelve cuántas se resolvieron. */
+async function emitirHipotesis(
+  a: Pick<AnalisisAcustico, 'ocurrenciaId' | 'medioId' | 'identificadoPor' | 'version' | 'versionArbol' | 'hipotesis'>,
+  ahora: string,
+): Promise<number> {
   let resueltas = 0;
   for (const h of a.hipotesis) {
     const id = nuevoId();
@@ -446,20 +487,7 @@ export async function anotarAnalisisAcustico(a: AnalisisAcustico): Promise<{ hip
       resueltas += 1;
     }
   }
-  for (const s of a.senales) {
-    await emitir('senal.detectada', nuevoId(), {
-      'dwc:eventID': a.salidaId,
-      'cdc:medioID': a.medioId,
-      'dwc:measurementType': `acousticDetection:${s.clase}`,
-      'dwc:measurementValue': s.etiqueta,
-      'cdc:claseEtiqueta': s.clase,
-      'cdc:confianza': s.confianza,
-      'cdc:desplazamientoSegundos': s.desplazamiento,
-      'dwc:measurementMethod': `BirdNET ${a.version}`,
-      'dwc:measurementDeterminedDate': ahora,
-    });
-  }
-  return { hipotesis: a.hipotesis.length, resueltas, senales: a.senales.length };
+  return resueltas;
 }
 
 // --- Lecturas -------------------------------------------------------------------------

@@ -636,6 +636,7 @@ tamaño, que hay que medir y no estimar.
 | exifr | EXIF de la foto: hora del disparo, cámara y, si la trae, su propia posición |
 | vitest | pruebas del cliente (el núcleo se prueba con el corredor de Node, §15.10) |
 | @tensorflow/tfjs | BirdNET en el teléfono (§15.21): el único runtime que carga la exportación oficial del modelo, un LayersModel con una capa propia; WebGL dentro de un trabajador |
+| onnxruntime-web | modelos de imagen en el teléfono (§15.23): PlantCLEF 2024 y FungiTastic son checkpoints de PyTorch y su camino al navegador es ONNX; WebGPU con WASM de reserva, dentro de un trabajador. Segundo runtime, autorizado aparte: convertir un ViT de timm a TFJS pasa por TensorFlow y no aporta nada |
 
 Deliberadamente **no**: librería de componentes, gestor de estado (el pliegue *es* el estado),
 librería de fechas (`Intl` nativo), librería de UUID (`crypto.randomUUID` más unas 20 líneas
@@ -1503,7 +1504,8 @@ Consecuencia, declarada aquí para que no parezca un descuido: habrá dos runtim
 Los modelos de imagen para plantas y hongos que vienen detrás (PlantCLEF, Danish Fungi) son
 transformadores de visión publicados en PyTorch y su camino al navegador es ONNX; forzarlos a
 TensorFlow.js sería otra conversión propia. Dos runtimes por dos formatos de origen salen más
-baratos que una conversión mantenida a mano. `onnxruntime-web` se pedirá cuando toque, no ahora.
+baratos que una conversión mantenida a mano. `onnxruntime-web` se pedirá cuando toque, no ahora
+(se pidió, se autorizó y entró en el §15.23).
 
 *Quién firma.* Las hipótesis del teléfono llevan `dwc:identifiedBy = birdnet-tfjs` y
 `cdc:modeloVersion = 2.4`; las del ordenador, `birdnet-analyzer`. Mismos pesos, ejecutores
@@ -1580,6 +1582,130 @@ nadie. Con red, el enlace al artículo entero está en la ficha; sin red, lo que
 trajo. Y no hay fotos: el resumen de Wikipedia trae una miniatura con su propia licencia, distinta
 en cada artículo, y comprobarlas una a una no compensa lo que aportan a alguien que tiene el
 ejemplar delante.
+
+### 15.23 Plantas y hongos por la foto, dentro del teléfono: dos modelos ajenos y un segundo runtime
+
+El encargo pide identificar plantas y hongos por la foto sin red, y Pl@ntNet (§15.17) es un
+servicio. La respuesta vuelve a ser la del mapa, la de BirdNET y la de las fichas: un fichero de
+terceros que se genera en casa y se mete una vez. Lo que cambia es el tamaño de lo que se mete y
+que hace falta otro runtime.
+
+*No se entrena nada.* Entrenar un clasificador de plantas o de hongos que valga algo pide
+millones de fotos etiquetadas y semanas de gráfica; lo que hacen las aplicaciones que identifican
+por la foto es exactamente eso, con datos propios, y no es un camino para un cuaderno personal.
+Lo que sí hay son dos modelos publicados con pesos y lista de clases: **PlantCLEF 2024**
+(ViT-B/14 DINOv2 con registros, ajustado sobre 7.806 especies, sobre todo europeas; Zenodo
+10848263, CC BY 4.0) y **FungiTastic** (ViT-B/16 a 224 px sobre 2.829 especies, el conjunto
+danés; Hugging Face `BVRA/vit_base_patch16_224.in1k_ft_fungitastic_224`, CC BY-NC 4.0). Los dos
+son checkpoints de PyTorch/timm. `datos/imagen/exportar.py` los carga, los exporta a ONNX,
+cuantiza si se pide, comprueba la paridad y empaqueta; corre en su propio entorno
+(`datos/imagen/requirements.txt`: torch, timm, onnx, onnxruntime), autorizado aparte del §10
+porque no toca al cliente.
+
+*El paquete.* El mismo contenedor `.modelo` del §15.21 —`CDCMODEL`, longitud, cabecera JSON,
+partes seguidas— con dos partes: `modelo.onnx` y `etiquetas.tsv`. La cabecera crece con lo que
+el cliente necesita para no tener que saber nada del modelo: `ejecutor: onnx`, `reino`,
+`arquitectura`, `cuantizacion`, `cita`, y `entrada` con el lado, la media y la desviación de la
+normalización, el `recorte` (`centro`: escalar el lado corto y recortar el cuadrado central, que
+es la transformación de evaluación de timm con `crop_pct` 1, la de PlantCLEF; `estirar`: la foto
+entera deformada al cuadrado, que es el `Resize((224, 224))` de la tarjeta de FungiTastic) y la
+interpolación de referencia. Un paquete mal descrito da resultados malos sin error, así que la
+descripción va dentro del fichero y no en el código del cliente. La tabla de etiquetas también va
+dentro, ya casada con GBIF en casa (`datos/imagen/etiquetas.py`, `species/match` con reino y
+caché en `datos/imagen/cache/`): 7.805 de las 7.806 de PlantCLEF con clave —305 son sinónimos y
+se guarda la clave aceptada, 13 casaron de forma difusa y se anotan—, y una sin resolver,
+*Valeriana coronata (L.) Mill.*, que GBIF solo casa a género; su hipótesis saldrá con nombre y
+sin taxón, que es lo que la restricción 6 permite. La lista de clases de FungiTastic no está en
+el checkpoint ni en la tarjeta: es la columna `category_id` → `species` del CSV de metadatos del
+conjunto (732 MB, una fila por foto, servidos por la universidad checa con cortes cada pocos MB;
+se bajó por rangos HTTP en paralelo); el exportador la lee de ahí (`--metadatos`) y falla si no
+suma 2.829. De esas, 2.828 con clave. Cuatro nombres son homónimos en GBIF —hay cuatro *Helvella
+crispa* con autor distinto— y `species/match` devuelve el reino en vez de elegir; el exportador
+pide entonces las alternativas y toma la **única aceptada** de rango especie, anotándolo en la
+fila (`homónimo: el único aceptado de 4 coincidencias exactas`); si hubiera varias o ninguna, no
+adivina. Así se resuelven tres; la cuarta, *Collaria arcyrionema*, es un mixomicete —un protista
+que la tradición micológica cuenta entre los hongos y GBIF no— y queda sin clave, con nombre.
+
+*Por qué 518 px.* El modelo de PlantCLEF se publicó a 518 px y se probó a 336 y a 224 para
+abaratarlo: con la foto de prueba que trae el propio tar (*Orchis simia*), a 518 la pone primera
+con 0,45 y a 336 y 224 el modelo deja de reconocerla. Los transformadores con embebido de
+posición interpolado no bajan de resolución gratis y este no baja nada. Así que 518 px, que son
+1.369 parcelas y unos 200 GFLOP por foto, y el coste se paga en el ejecutor.
+
+*El ejecutor.* `onnxruntime-web` 1.29, el segundo runtime que el §15.21 dejó anunciado, fijado a
+versión exacta. Corre en un trabajador propio (`cliente/src/imagen/trabajador.ts`), con WebGPU
+si el navegador tiene adaptador y WASM de un hilo si no —sin `crossOriginIsolated` no hay
+SharedArrayBuffer, y GitHub Pages no pone las cabeceras—. Tres cosas que costaron encontrarlas y
+quedan aquí para no encontrarlas dos veces: el paquete `onnxruntime-web/webgpu` de 1.29 carga
+`ort-wasm-simd-threaded.asyncify.wasm`, no el `.jsep.wasm`, y si se le da el otro muere al crear
+la sesión con «Cannot convert undefined to a BigInt»; `onnxruntime-web` tiene que ir en
+`optimizeDeps.exclude` de Vite, porque el optimizador de dependencias rompe la carga del `.wasm`
+y además recarga la página la primera vez que lo descubre; y el `.wasm` son 25,7 MB que la
+aplicación tiene que llevar en su propia caché —sin cobertura no hay CDN—, por encima del límite
+de 2 MiB por fichero de Workbox, que sube a 40 MiB solo por él.
+
+*Medido, en el portátil* (gráfica integrada Intel de duodécima generación, Chrome 152, la foto
+de prueba a 518 px):
+
+| variante | tamaño | WebGPU, por foto | WASM un hilo, por foto |
+|---|---|---|---|
+| fp32 | 370 MB | 2,3 s | no medido |
+| fp16 | 185 MB | **0,6 s** (primera pasada 2 s) | 36 s |
+| int8 (dinámica) | 97 MB | 5 s | **16 s** (primera 18 s) |
+
+Los operadores enteros de la cuantización dinámica no tienen núcleo en WebGPU y ORT los devuelve
+a la CPU: por eso int8 en la gráfica es más lento que fp16 y que fp32. De ahí dos paquetes del
+mismo modelo, y el exportador hace el que se le pida: **fp16 para un teléfono con WebGPU**
+(Chrome en Android desde la 121 con gráfica reciente; Safari desde la 26) e **int8 para el que
+no lo tiene**. La cabecera dice cuál es y la hoja de modelos lo enseña. El cliente corre el que le
+den en el ejecutor que haya y dice en pantalla cuál usa; lo que no hace es convertir. En el
+teléfono no está medido todavía —la sesión de trabajo no tenía uno a mano— y la estimación
+honrada para WASM es de tres a cinco veces el portátil: del orden de un minuto por foto con
+int8. Se acepta porque es mejor que ninguna identificación en el Pas, y porque en el teléfono con
+WebGPU la cuenta cambia de orden.
+
+*Paridad.* La foto se prepara en el trabajador como la preparó el entrenamiento —recorte según la
+cabecera, escalado con `createImageBitmap` en calidad alta, normalización por canal en CHW— y el
+navegador no interpola con la bicúbica de PIL. Sobre la foto de prueba, torch, ONNX fp32 en CPU,
+fp16 en WebGPU e int8 en WASM dan las mismas cinco especies con el mismo orden en las cuatro
+primeras y *Orchis simia* primera en todos: 0,45 torch y ONNX fp32 en CPU (max|dif| 1,7·10⁻⁵),
+0,42 fp32 en el navegador —la diferencia es el remuestreo—, 0,39 fp16 en WebGPU, 0,45 int8 en
+WASM. Las probabilidades se mueven en la segunda cifra, el veredicto no. Para FungiTastic la paridad ONNX contra torch
+sobre ruido es de 5,5·10⁻⁵ y el int8 conserva el top-1; sobre una foto de hongo con etiqueta
+conocida queda pendiente, porque no había ninguna a mano.
+
+*Comprobado de punta a punta*, en Chrome 152 contra el servidor de desarrollo, con un cuaderno
+vacío: el paquete int8 de PlantCLEF metido desde una dirección (92,5 MiB en OPFS), una
+observación con la foto de prueba, **Mirar como planta** → tres hipótesis en el registro
+(*Orchis simia* 44 %, *O. italica* 12 %, *O. × bergonii* 10 %), firmadas `plantclef2024-onnx
+2024`, con su taxón resuelto, sin aceptar, y la foto marcada como ya mirada. Luego el paquete
+int8 de FungiTastic (85,1 MiB) y **Mirar como hongo** sobre la misma foto: 1,7 s en WebGPU y una
+hipótesis, una roya al 64 %. Eso último es lo que hace un modelo sin clase «otra cosa» con una
+orquídea, y es la razón de que el reino lo elija el usuario. Cargar cada modelo —leerlo de OPFS,
+crear la sesión, compilar— llevó decenas de segundos la primera vez en la sesión, con el avance en
+pantalla.
+
+*Quién firma y qué se escribe.* `dwc:identifiedBy = plantclef2024-onnx` o `fungitastic-onnx`,
+`cdc:modeloVersion` la versión de pesos de la cabecera, `cdc:medioId` la foto. Hasta cinco
+hipótesis por encima de 0,05 y siempre la mejor aunque no llegue, con el top-5 y las condiciones
+—modelo, lado, cuantización, ejecutor— en `dwc:identificationRemarks`; el `taxon.resuelto` de
+cada una cuando la etiqueta trae clave. Ninguna se acepta sola, y una foto ya mirada por un
+modelo con esos pesos no se vuelve a mirar (`yaVista`, con `medioId` como en BirdNET). Los dos
+modelos carecen de clase «otra cosa»: una seta por PlantCLEF sale como una planta con su
+confianza. Por eso el botón es **Mirar como planta** o **Mirar como hongo**, uno por modelo
+instalado, y elige el usuario, que tiene el ejemplar delante; la aplicación no adivina el reino.
+
+*La restricción 4 no se toca.* El paquete lleva nombres científicos y claves; ni vernáculos ni
+texto. El CSV de metadatos de FungiTastic trae, entre sus treinta y dos columnas, una que es
+exactamente el juicio que la restricción prohíbe; el exportador lee `category_id` y `species` y
+ninguna otra, y el CSV se queda en `datos/imagen/fungi/`, fuera del repositorio. Lo que se enseña
+de una especie sigue saliendo de las fichas del §15.22, saneadas en casa. La prueba del léxico
+recorre `cliente/src/imagen/` como el resto del cliente.
+
+*Licencias.* PlantCLEF 2024 es CC BY 4.0 y la atribución va en la cabecera (`cita`). FungiTastic
+es CC BY-NC 4.0: la misma restricción de uso no comercial que hereda BirdNET, dicha en el README.
+Ninguno de los dos va en el repositorio ni en Pages: 100–400 MB que se generan en casa y viajan
+por cable, y que con los mapas y los demás modelos son lo único que la aplicación borra.
 
 ## 17. La interfaz de campo
 

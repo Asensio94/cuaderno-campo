@@ -29,3 +29,16 @@ datos/birdnet/*/*.modelo.parcial
 datos/fichas/*.fichas
 datos/fichas/*.fichas.parcial
 datos/fichas/cache/
+
+# Los modelos de imagen (datos/imagen/): el entorno con torch, los pesos originales de PlantCLEF
+# 2024 y de Danish Fungi, los metadatos con que se casan las etiquetas, y los .modelo ya
+# exportados. Todo se genera en casa con datos/imagen/exportar.py; nada de eso es fuente.
+datos/imagen/.venv/
+datos/imagen/plantclef2024/
+datos/imagen/fungi/
+datos/imagen/*.modelo
+datos/imagen/*.modelo.parcial
+datos/imagen/*.onnx
+datos/imagen/cache/
+
+datos/imagen/*.etiquetas.tsv

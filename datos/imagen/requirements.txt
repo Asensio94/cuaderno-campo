@@ -1,0 +1,17 @@
+# Entorno aparte para exportar los modelos de imagen (ADR §15.23), autorizado por el autor.
+# No es el entorno del servidor ni de los trabajadores: torch no entra en `nucleo`/`trabajadores`.
+#
+#   python -m venv datos/imagen/.venv
+#   datos/imagen/.venv/Scripts/pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
+#   datos/imagen/.venv/Scripts/pip install -r datos/imagen/requirements.txt
+#
+# Versiones con las que se hizo la exportación de referencia (2026-09-07).
+torch==2.14.0
+torchvision==0.29.0
+timm==1.0.29
+onnx==1.22.0
+onnxruntime==1.29.0
+huggingface_hub==1.30.0
+pillow==12.3.0
+numpy==2.5.2
+pyyaml

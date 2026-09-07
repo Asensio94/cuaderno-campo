@@ -15,7 +15,9 @@ export default defineConfig({
   server: { fs: { allow: ['..'] } },
   // OPFS con manejadores síncronos solo existe en un trabajador, y crear uno con módulos
   // requiere estas cabeceras en desarrollo igual que en producción.
-  optimizeDeps: { exclude: ['wa-sqlite'] },
+  // onnxruntime-web tampoco se deja preempaquetar: su módulo Emscripten embebido sale roto del
+  // optimizador («Cannot convert undefined to a BigInt» al crear la sesión).
+  optimizeDeps: { exclude: ['wa-sqlite', 'onnxruntime-web'] },
   build: { outDir: '../dist', emptyOutDir: true, target: 'es2022' },
   plugins: [
     react(),
@@ -50,7 +52,12 @@ export default defineConfig({
       // no abre —ni identifica— sin cobertura, que es el caso normal en el Pas. Los `.pbf` son
       // los glifos del mapa: sin ellos MapLibre pide la fuente a una red que no hay y el mapa
       // vuelve a quedarse mudo, sin decirlo.
-      workbox: { globPatterns: ['**/*.{js,css,html,wasm,svg,woff2,png,tsv,json,pbf}'] },
+      // El .wasm de ONNX Runtime (§15.23) pasa de los 2 MiB que Workbox cachea por defecto; sin él
+      // en la caché los modelos de imagen no arrancan sin cobertura.
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,wasm,svg,woff2,png,tsv,json,pbf}'],
+        maximumFileSizeToCacheInBytes: 40 * 1024 * 1024,
+      },
     }),
   ],
 });

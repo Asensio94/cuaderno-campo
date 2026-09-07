@@ -1373,6 +1373,16 @@ select:focus {
 .birdnet-fila .secundario {
   flex: 0 0 auto;
 }
+/* Modelos de imagen (§15.23): varios botones por foto, uno por modelo instalado. */
+.imagen-fila {
+  align-items: flex-start;
+}
+.imagen-botones {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
 
 /* --- Fichas de especie (§15.22) ---------------------------------------------------------- */
 .fichas-enlaces {

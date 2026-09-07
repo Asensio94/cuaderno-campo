@@ -53,6 +53,30 @@ export interface Cabecera {
   readonly licencia: string;
   readonly atribucion: string;
   readonly partes: readonly Parte[];
+
+  // Lo que añaden los modelos de imagen (§15.23). Un paquete de BirdNET no trae nada de esto.
+  /** Cómo se llama para una persona («PlantCLEF 2024»). */
+  readonly titulo?: string;
+  /** Qué lo ejecuta: `tfjs` (BirdNET, implícito si falta) u `onnx`. */
+  readonly ejecutor?: 'tfjs' | 'onnx';
+  /** Cómo se prepara la foto: lado en píxeles, media y desviación por canal, y si se recorta el
+   * cuadrado central (`centro`) o se estira la foto entera al cuadrado (`estirar`), que es lo
+   * que hizo cada uno al entrenar. */
+  readonly entrada?: {
+    readonly lado: number;
+    readonly media: readonly [number, number, number];
+    readonly desviacion: readonly [number, number, number];
+    readonly recorte: 'centro' | 'estirar';
+    readonly interpolacion?: string;
+  };
+  /** `fp32`, `fp16`, `int8`: lo que se hizo con los pesos al exportar. */
+  readonly cuantizacion?: string;
+  readonly arquitectura?: string;
+  /** `Plantae`, `Fungi`: a qué reino pone nombres. */
+  readonly reino?: string;
+  /** Cuándo se casaron las etiquetas con GBIF: `cdc:versionArbolGbif` de lo que resuelva. */
+  readonly arbolGbif?: string;
+  readonly cita?: string;
 }
 
 export interface Paquete {

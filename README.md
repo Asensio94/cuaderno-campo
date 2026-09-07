@@ -101,6 +101,14 @@ piezas:
   meten como un mapa, y la licencia viaja escrita en la cabecera del paquete.
 - **Pl@ntNet** requiere clave de API con cuota, y su nivel gratuito es **no comercial**. La clave
   va en variables de entorno, **nunca en el repositorio**.
+- **PlantCLEF 2024** (identificación de plantas por la foto, dentro del teléfono): los pesos que
+  publicó el equipo organizador en Zenodo (registro 10848263) van bajo **CC BY 4.0**, que solo
+  pide atribución; la cita viaja en la cabecera del paquete `.modelo`. No van en el repositorio
+  porque pesan 370 MB en coma flotante (97 MB cuantizados), no por licencia.
+- **FungiTastic / Danish Fungi** (identificación de hongos por la foto): los pesos publicados por
+  el grupo BVRA en Hugging Face y los metadatos del conjunto de datos van bajo **CC BY-NC 4.0:
+  uso no comercial**, la misma restricción heredada que BirdNET y documentada aquí por la misma
+  razón. El paquete se genera en casa y la licencia va escrita en su cabecera.
 - **OpenStreetMap y Protomaps**: los mosaicos del mapa salen del basemap de Protomaps, construido
   desde datos de OSM bajo **ODbL**. La atribución no es decoración: va pintada en el mapa y viaja
   dentro del propio fichero `.pmtiles`. No se descargan mosaicos en bloque de
@@ -247,17 +255,91 @@ Comprobado con el `sample.wav` que trae BirdNET: el ordenador y el teléfono dan
 etiquetas con las mismas confianzas a cuatro decimales. Los detalles, y la única discrepancia
 encontrada en el filtro, en el ADR §15.21.
 
+## Plantas y hongos por la foto, dentro del teléfono
+
+Dos modelos publicados, sin red, con el mismo trato que BirdNET: un fichero que se prepara una
+vez en el ordenador y se mete desde **Modelos y fichas**. No se entrena nada propio.
+
+| modelo | qué es | clases | licencia |
+|---|---|---|---|
+| PlantCLEF 2024 | ViT-B/14 DINOv2 afinado por el equipo de PlantCLEF (Zenodo 10848263) | 7.806 plantas, sobre todo europeas | CC BY 4.0 |
+| FungiTastic | ViT-B/16 afinado por BVRA sobre el conjunto danés (Hugging Face) | 2.829 hongos | CC BY-NC 4.0, **uso no comercial** |
+
+Se exportan a ONNX con un entorno aparte, que lleva torch y no entra en la aplicación:
+
+```bash
+python -m venv datos/imagen/.venv
+datos/imagen/.venv/Scripts/pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
+datos/imagen/.venv/Scripts/pip install -r datos/imagen/requirements.txt
+```
+
+Para PlantCLEF hay que descomprimir el `modelos.tar` de Zenodo en `datos/imagen/plantclef2024/`;
+el de FungiTastic se baja solo de Hugging Face, pero su lista de clases no viene con los pesos y
+hay que pasarle el CSV de metadatos del conjunto (columnas `category_id` y `species`):
+
+```bash
+datos/imagen/.venv/Scripts/python datos/imagen/exportar.py plantclef2024 --cuantizacion fp16
+```
+
+```bash
+datos/imagen/.venv/Scripts/python datos/imagen/exportar.py fungitastic --metadatos datos/imagen/fungi/FungiTastic-Train.csv --cuantizacion int8
+```
+
+Cada pasada exporta el modelo, lo cuantiza, casa las etiquetas con GBIF (con caché en
+`datos/imagen/cache/`), comprueba que ONNX dice lo mismo que torch sobre una foto de prueba y
+escribe `datos/imagen/<modelo>-<pesos>-<cuantización>.modelo`: el modelo, la tabla de etiquetas
+con su clave de GBIF y una cabecera que dice cómo se prepara la foto. Sale la misma etiqueta
+literal del modelo y la clave del taxón aceptado. De las 7.806 de PlantCLEF, una (*Valeriana
+coronata*) se queda sin clave, y de las 2.829 de FungiTastic otra (*Collaria arcyrionema*, un
+mixomicete que GBIF no cuenta entre los hongos); las dos se dicen en la tabla y salen como
+hipótesis con nombre y sin taxón.
+
+**Cuál meter.** Depende de si el teléfono tiene WebGPU (Chrome en Android desde la 121 con
+gráfica reciente, Safari desde la 26; la hoja de modelos dice en qué ejecutor está corriendo):
+
+| variante | tamaño (PlantCLEF / FungiTastic) | con WebGPU | sin WebGPU (WASM, un hilo) |
+|---|---|---|---|
+| `fp16` | 185 / 176 MB | 0,6 s por foto en el portátil | 36 s |
+| `int8` | 97 / 89 MB | 5 s | 16 s en el portátil |
+
+Los números son los de PlantCLEF a 518 px en un portátil con gráfica integrada Intel; FungiTastic
+va a 224 px y es unas cinco veces más ligero (1,7 s con `int8` en WebGPU en el mismo portátil). En
+el teléfono no están medidos todavía, y sin WebGPU hay que contar con que una foto de planta tarde
+del orden de un minuto. Cargar el modelo —leerlo del almacenamiento y compilarlo— tarda decenas
+de segundos la primera vez en cada sesión, y se ve en pantalla; las fotos siguientes van a la
+velocidad de la tabla. Con WebGPU, `fp16`; sin él, `int8`. Un solo paquete por modelo: si se
+mete otro del mismo modelo, gana el de pesos más nuevos.
+
+**Cómo se usa.** En el detalle de una observación con foto aparece un botón por modelo
+instalado: **Mirar como planta** y **Mirar como hongo**. Elige el usuario, que tiene el ejemplar
+delante: los modelos no tienen clase «otra cosa» y una seta mirada como planta sale como una
+planta con su confianza. Salen hasta cinco hipótesis por encima de 0,05 —y siempre la mejor,
+aunque no llegue—, firmadas `plantclef2024-onnx` o `fungitastic-onnx` con la versión de los pesos,
+con el top-5 y las condiciones de la pasada en la observación, y con su taxón resuelto cuando la
+etiqueta trae clave. Ninguna se acepta sola; una foto ya mirada por un modelo no se vuelve a
+mirar. La foto no sale del teléfono.
+
+Lo que la aplicación cuenta después de una especie sigue saliendo de las
+[fichas](#la-ficha-de-la-especie-dentro-del-teléfono), saneadas en casa: los paquetes de modelo
+llevan nombres científicos y claves, nada más, y la
+[restricción 4](#licencias-y-restricciones-heredadas) se aplica igual. Las decisiones —por qué
+518 px, por qué dos variantes, qué hubo que aprender de ONNX Runtime en el navegador— están en el
+ADR §15.23.
+
 ## Plantas por la foto: el conector de Pl@ntNet
 
-Igual que BirdNET, es otro dispositivo del cuaderno y trabaja sobre una copia. La diferencia es
-que **este sí sale de la máquina**: sube fotos a una API, y de ahí las tres reglas que lo gobiernan.
+Es la segunda opinión, con red: la primera es el
+[modelo dentro del teléfono](#plantas-y-hongos-por-la-foto-dentro-del-teléfono). Igual que
+BirdNET, es otro dispositivo del cuaderno y trabaja sobre una copia. La diferencia es que **este
+sí sale de la máquina**: sube fotos a una API, y de ahí las tres reglas que lo gobiernan.
 
-**En el teléfono no hay botón de identificar plantas.** El conector corre en el ordenador, sobre
-una copia, y devuelve un JSONL que el teléfono restaura: en la aplicación se ve el resultado, no
-el disparo, con quién hizo cada hipótesis, su versión y su confianza. Lo que impide el botón no
-es pereza —es que la clave de Pl@ntNet en un cliente estático es una clave publicada, y que en
-el Pas no hay red a la que preguntar. Las aves sí se oyen en el teléfono (arriba): ahí el modelo
-es un fichero que se mete, no una API a la que llamar.
+**En el teléfono no hay botón de Pl@ntNet.** El conector corre en el ordenador, sobre una copia, y
+devuelve un JSONL que el teléfono restaura: en la aplicación se ve el resultado, no el disparo,
+con quién hizo cada hipótesis, su versión y su confianza. Lo que impide el botón no es pereza —es
+que la clave de Pl@ntNet en un cliente estático es una clave publicada, y que en el Pas no hay red
+a la que preguntar. Las aves y, desde ahora, las plantas y los hongos se identifican en el
+teléfono con modelos que son ficheros que se meten, no APIs a las que llamar; Pl@ntNet queda para
+contrastar desde casa.
 
 La clave se lee del entorno y no está en el repositorio:
 
@@ -373,5 +455,12 @@ los pesos empaquetados como un mapa y el mismo filtro geográfico que el ordenad
 [ficha de la especie](#la-ficha-de-la-especie-dentro-del-teléfono), generada en casa de Wikipedia
 y GBIF y saneada antes de entrar en el aparato.
 
+Hecho por último: [plantas y hongos por la foto dentro del teléfono](#plantas-y-hongos-por-la-foto-dentro-del-teléfono),
+con PlantCLEF 2024 y FungiTastic exportados a ONNX, cuantizados y empaquetados como un mapa,
+corriendo en WebGPU o en WASM dentro de un trabajador, y comprobados de punta a punta en el
+navegador: paquete metido por dirección, foto, botón, hipótesis sin aceptar en el registro.
+
 Pendiente: validar un archivo real en gbif.org; una primera pasada de Pl@ntNet con clave de
-verdad; una salida de verdad al Pas con audio y su análisis.
+verdad; medir los modelos de imagen en el teléfono de verdad, no solo en el ordenador; comprobar
+la paridad de FungiTastic sobre una foto de hongo con etiqueta conocida (la de la exportación se
+hizo sobre ruido); una salida de verdad al Pas con audio y su análisis.

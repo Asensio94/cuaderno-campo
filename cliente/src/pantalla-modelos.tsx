@@ -59,8 +59,10 @@ export function PantallaModelos({ cerrar }: { cerrar: () => void }) {
     <Hoja titulo="Modelos y fichas" cerrar={cerrar}>
       <p className="tenue">
         Un modelo es un fichero, como un mapa: se mete una vez, en casa, y a partir de ahí los
-        audios se oyen sin cobertura. El de BirdNET se prepara en el ordenador con{' '}
-        <code>datos/birdnet/empaquetar.py</code> y pesa 82 MB.
+        audios se oyen y las fotos se miran sin cobertura. El de BirdNET se prepara en el ordenador
+        con <code>datos/birdnet/empaquetar.py</code> y pesa 82 MB; los de imagen —PlantCLEF 2024
+        para plantas, FungiTastic para hongos— con <code>datos/imagen/exportar.py</code>, y pesan
+        entre 100 y 400 MB según la precisión que se elija.
       </p>
 
       {(paquetes ?? []).map((p) => (
@@ -74,7 +76,8 @@ export function PantallaModelos({ cerrar }: { cerrar: () => void }) {
                 ? `a medias, ${mb(p.bytes)} — reanuda o borra`
                 : p.cabecera
                   ? `${mb(p.bytes)} · ${p.cabecera.etiquetas} etiquetas` +
-                    (p.cabecera.conMetadatos ? ' · con filtro geográfico' : '')
+                    (p.cabecera.conMetadatos ? ' · con filtro geográfico' : '') +
+                    (p.cabecera.entrada ? ` · ${p.cabecera.entrada.lado} px, ${p.cabecera.cuantizacion ?? 'fp32'}` : '')
                   : `${mb(p.bytes)} · no se lee como modelo`}
             </span>
             {p.cabecera && (
@@ -237,7 +240,9 @@ export function PantallaModelos({ cerrar }: { cerrar: () => void }) {
       )}
       <p className="ayuda">
         Los pesos de BirdNET son de terceros y van bajo CC BY-NC-SA 4.0: uso no comercial, y por
-        eso no vienen con la aplicación. Los resúmenes de las fichas son de Wikipedia (CC BY-SA 4.0)
+        eso no vienen con la aplicación; los de FungiTastic, CC BY-NC 4.0, igual; los de PlantCLEF
+        2024 son CC BY 4.0 pero pesan demasiado para ir dentro. Cada paquete trae su licencia en la
+        cabecera y se ve aquí. Los resúmenes de las fichas son de Wikipedia (CC BY-SA 4.0)
         y ya vienen saneados de casa. Los mapas, los modelos y las fichas son lo único que aquí se
         borra.
       </p>

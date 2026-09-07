@@ -63,6 +63,7 @@ import {
 } from './piezas.tsx';
 import type { Eleccion } from './piezas.tsx';
 import { PanelBirdnet } from './birdnet/panel.tsx';
+import { PanelImagen } from './imagen/panel.tsx';
 import { PantallaMapa } from './pantalla-mapa.tsx';
 import type { PuntoMapa } from './pantalla-mapa.tsx';
 import { PantallaFicha } from './pantalla-ficha.tsx';
@@ -736,9 +737,9 @@ function Inicio({
 
       <button type="button" className="tarjeta series" onClick={modelos}>
         <span className="tarjeta-texto">
-          <span className="etiqueta">Modelos</span>
-          <strong>Oír los audios aquí</strong>
-          <span className="tenue">BirdNET en el aparato, sin cobertura, con los pesos metidos</span>
+          <span className="etiqueta">Modelos y fichas</span>
+          <strong>Oír los audios y mirar las fotos aquí</strong>
+          <span className="tenue">BirdNET, PlantCLEF y FungiTastic en el aparato, sin cobertura; y la ficha de cada especie</span>
         </span>
         <Icono n="flecha" />
       </button>
@@ -1373,6 +1374,7 @@ function Detalle({
       )}
 
       <PanelBirdnet o={o} salidaId={salidaId} hecho={refrescar} abrirModelos={abrirModelos} />
+      <PanelImagen o={o} salidaId={salidaId} hecho={refrescar} abrirModelos={abrirModelos} />
 
       <div className="datos">
         <div>
