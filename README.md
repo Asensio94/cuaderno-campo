@@ -110,6 +110,10 @@ piezas:
   acompañe a la fuente: va en `cliente/public/glifos/OFL.txt`. No impone restricción comercial.
 - **GBIF**: la resolución de nombres usa su API pública. Conviene citar los conjuntos de datos y
   respetar sus condiciones al publicar.
+- **Wikipedia y Wikidata**: los resúmenes de las fichas de especie son texto de Wikipedia bajo
+  **CC BY-SA 4.0**, con título, dirección y fecha de revisión escritos en cada ficha; los nombres
+  por idioma vienen de Wikidata (CC0). Van en un paquete que se genera en casa y no en el
+  repositorio, y salen del ordenador ya saneados según la restricción 4 (abajo).
 
 Las observaciones son datos propios y se exportan como **Darwin Core Archive**, que es lo que
 entienden GBIF y iNaturalist.
@@ -293,6 +297,35 @@ Límite conocido: Pl@ntNet no publica una versión de pesos citable, así que `c
 guarda la cadena de versión que devuelve la respuesta. Es menos reproducible que BirdNET, y queda
 dicho en vez de disimulado.
 
+## La ficha de la especie, dentro del teléfono
+
+Una observación con determinación o con hipótesis tiene un botón **Ficha de …** por cada taxón
+que nombra. La ficha cuenta lo que el aparato sabe sin cobertura: cuántas veces lo has determinado
+tú por la zona (con salto a la serie), los nombres en castellano, francés e inglés, la
+clasificación y el resumen del artículo de Wikipedia en cada idioma que lo tenga, con la fecha de
+revisión y el enlace al artículo entero.
+
+Como el mapa y el modelo, la ficha es un fichero que se genera en casa y se mete una vez:
+
+```bash
+python datos/fichas/generar.py --copia copia.zip --aves 43.146,-3.935 --aves 48.85,2.35 --nombre pas-idf
+```
+
+`--copia` toma todos los taxones que nombra una copia del cuaderno; `--aves LAT,LON` añade las aves
+que el filtro de BirdNET espera en esa zona en todo el año (pide el entorno del trabajador,
+`trabajadores/birdnet/.venv/Scripts/python`); `--claves` admite claves de GBIF a mano. Se combinan.
+Sale `datos/fichas/pas-idf.fichas`, unos KB por especie, y se mete desde la hoja **Modelos y
+fichas** del inicio, del almacenamiento del teléfono o de una dirección. Las respuestas de las APIs
+se guardan en `datos/fichas/cache/` para poder repetir sin volver a preguntar.
+
+**Lo que la ficha no dice.** La [restricción 4](#licencias-y-restricciones-heredadas) prohíbe
+cualquier juicio sobre qué se puede hacer con un hongo o una planta, y los resúmenes de Wikipedia
+están llenos de ellos. El generador quita esas **frases enteras** antes de escribir el paquete
+—y los nombres vernáculos y títulos que juzgan—, y la ficha dice cuántas quitó. Se equivoca del
+lado de quitar de más. El artículo entero sigue a un enlace, con red; la aplicación no lo
+reproduce. Los detalles del filtro y de por qué vive en `datos/` y no en el cliente, en el ADR
+§15.22.
+
 ## Hongos: los caracteres que la foto no trae
 
 Con un hongo, la foto es la mitad. La otra mitad se apunta delante del ejemplar: **cómo vira al
@@ -334,9 +367,11 @@ taxón elegido y el enlace de restaurar copia salían con la tinta equivocada, i
 temas, y ahora la hipótesis que va en cabeza se ve en la lista con su marca de «sin aceptar».
 
 Hecho después: los [caracteres de campo de los hongos](#hongos-los-caracteres-que-la-foto-no-trae)
-en la observación, con su vocabulario generado a los dos lenguajes y su enmienda; y
+en la observación, con su vocabulario generado a los dos lenguajes y su enmienda;
 [BirdNET dentro del teléfono](#aves-por-el-canto-birdnet-en-el-ordenador-y-en-el-teléfono), con
-los pesos empaquetados como un mapa y el mismo filtro geográfico que el ordenador.
+los pesos empaquetados como un mapa y el mismo filtro geográfico que el ordenador; y la
+[ficha de la especie](#la-ficha-de-la-especie-dentro-del-teléfono), generada en casa de Wikipedia
+y GBIF y saneada antes de entrar en el aparato.
 
 Pendiente: validar un archivo real en gbif.org; una primera pasada de Pl@ntNet con clave de
 verdad; una salida de verdad al Pas con audio y su análisis.

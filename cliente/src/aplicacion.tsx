@@ -65,6 +65,7 @@ import type { Eleccion } from './piezas.tsx';
 import { PanelBirdnet } from './birdnet/panel.tsx';
 import { PantallaMapa } from './pantalla-mapa.tsx';
 import type { PuntoMapa } from './pantalla-mapa.tsx';
+import { PantallaFicha } from './pantalla-ficha.tsx';
 import { PantallaModelos } from './pantalla-modelos.tsx';
 import { PantallaSeries } from './pantalla-series.tsx';
 import type { SemillaSerie } from './pantalla-series.tsx';
@@ -1225,6 +1226,21 @@ function HojaNota({
 
 // --- Hoja: detalle de una observación ---------------------------------------------------
 
+/** Los taxones con clave de GBIF que nombra la observación: la determinación primero, luego las
+ * hipótesis, sin repetir. Son los que pueden tener ficha (§15.22). */
+function taxonesNombrados(o: Observacion): { gbifKey: number; nombre: string }[] {
+  const vistos = new Set<number>();
+  const lista: { gbifKey: number; nombre: string }[] = [];
+  const meter = (gbifKey: number | undefined, nombre: string | undefined) => {
+    if (gbifKey === undefined || vistos.has(gbifKey)) return;
+    vistos.add(gbifKey);
+    lista.push({ gbifKey, nombre: nombre ?? String(gbifKey) });
+  };
+  meter(o.determinacion?.gbifKey, o.determinacion?.cientifico);
+  for (const i of o.identificaciones) meter(i.gbifKey, i.cientifico ?? i.literal);
+  return lista;
+}
+
 function Detalle({
   o,
   observador,
@@ -1233,6 +1249,7 @@ function Detalle({
   verSerie,
   salidaId,
   abrirModelos,
+  verFicha,
   cerrar,
 }: {
   o: Observacion;
@@ -1248,6 +1265,8 @@ function Detalle({
   /** La salida a la que pertenece: `dwc:eventID` de las señales que deje BirdNET. */
   salidaId: string;
   abrirModelos: () => void;
+  /** La ficha de un taxón que nombra la observación: la determinación o una hipótesis. */
+  verFicha: (gbifKey: number, nombre: string) => void;
   cerrar: () => void;
 }) {
   const [comentario, setComentario] = useState(o.comentario ?? '');
@@ -1390,6 +1409,22 @@ function Detalle({
         </button>
       )}
 
+      {taxonesNombrados(o).length > 0 && (
+        <div className="fichas-enlaces">
+          {taxonesNombrados(o).map((t) => (
+            <button
+              key={t.gbifKey}
+              type="button"
+              className="secundario"
+              onClick={() => verFicha(t.gbifKey, t.nombre)}
+            >
+              <Icono n="flecha" tam={18} />
+              Ficha de <em>{t.nombre}</em>
+            </button>
+          ))}
+        </div>
+      )}
+
       <fieldset disabled={o.retractada}>
         <label>
           <span>Qué viste</span>
@@ -1453,7 +1488,16 @@ type Pantalla =
       readonly volverA: 'inicio' | 'salida';
     }
   | { readonly tipo: 'mapa'; readonly volverA: 'inicio' | 'salida' }
-  | { readonly tipo: 'modelos'; readonly volverA: 'inicio' | 'salida' };
+  | { readonly tipo: 'modelos'; readonly volverA: 'inicio' | 'salida' }
+  | {
+      readonly tipo: 'ficha';
+      readonly gbifKey: number;
+      readonly nombre: string;
+      readonly semilla?: { latitud: number; longitud: number; donde: string };
+      /** La pantalla de la que se vino, tal cual: una ficha se abre desde un detalle y se
+       * vuelve a ese detalle. */
+      readonly volverA: Pantalla;
+    };
 
 export function Aplicacion() {
   const [campo, setCampo] = useState<EstadoCampo | null>(null);
@@ -1497,7 +1541,8 @@ export function Aplicacion() {
     campo?.abierta != null ||
       pantalla.tipo === 'series' ||
       pantalla.tipo === 'mapa' ||
-      pantalla.tipo === 'modelos',
+      pantalla.tipo === 'modelos' ||
+      pantalla.tipo === 'ficha',
   );
 
   if (fallo !== null) return <Atascado motivo={fallo} reintentar={recargar} />;
@@ -1528,6 +1573,20 @@ export function Aplicacion() {
           setViendo(id);
           setPantalla({ tipo: 'salida' });
         }}
+      />
+    );
+  }
+
+  if (pantalla.tipo === 'ficha') {
+    const { gbifKey, nombre, semilla, volverA } = pantalla;
+    return (
+      <PantallaFicha
+        gbifKey={gbifKey}
+        nombre={nombre}
+        semilla={semilla}
+        verSerie={(s) => setPantalla({ tipo: 'series', semilla: s, volverA: 'salida' })}
+        abrirModelos={() => setPantalla({ tipo: 'modelos', volverA: 'salida' })}
+        cerrar={() => setPantalla(volverA)}
       />
     );
   }
@@ -1634,6 +1693,19 @@ export function Aplicacion() {
           verSerie={(semilla) => setPantalla({ tipo: 'series', semilla, volverA: 'salida' })}
           salidaId={campo.salida.id}
           abrirModelos={() => setPantalla({ tipo: 'modelos', volverA: 'salida' })}
+          verFicha={(gbifKey, nombre) =>
+            setPantalla({
+              tipo: 'ficha',
+              gbifKey,
+              nombre,
+              semilla: {
+                latitud: pantalla.o.latitud,
+                longitud: pantalla.o.longitud,
+                donde: `Aquí mismo (${hora(pantalla.o.capturadoEn) || 'esta observación'})`,
+              },
+              volverA: pantalla,
+            })
+          }
           cerrar={() => setPantalla({ tipo: 'salida' })}
         />
       )}

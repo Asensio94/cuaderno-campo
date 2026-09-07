@@ -23,3 +23,9 @@ datos/mosaicos/*.parcial
 # CC BY-NC-SA que se generan en casa y se meten en el aparato como un mapa.
 datos/birdnet/*/*.modelo
 datos/birdnet/*/*.modelo.parcial
+
+# Las fichas de especie (datos/fichas/generar.py): texto de Wikipedia y GBIF que se genera en
+# casa y se mete en el aparato como un mapa. La caché de respuestas de las APIs, con ellas.
+datos/fichas/*.fichas
+datos/fichas/*.fichas.parcial
+datos/fichas/cache/

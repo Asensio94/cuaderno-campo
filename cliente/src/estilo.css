@@ -1373,3 +1373,69 @@ select:focus {
 .birdnet-fila .secundario {
   flex: 0 0 auto;
 }
+
+/* --- Fichas de especie (§15.22) ---------------------------------------------------------- */
+.fichas-enlaces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.fichas-enlaces em {
+  font-style: italic;
+}
+.fichas-titulo {
+  margin: 1.4rem 0 0.2rem;
+  font-size: 1rem;
+}
+.ficha-cientifico {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.ficha-nombres {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.8rem;
+  margin: 0;
+}
+.ficha-nombres div {
+  display: contents;
+}
+.ficha-nombres dt {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+  align-self: baseline;
+}
+.ficha-nombres dd {
+  margin: 0;
+}
+.ficha-clasificacion {
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+.ficha-tuyas h3 {
+  margin: 0 0 0.3rem;
+  font-size: 0.95rem;
+}
+.ficha-tuyas p {
+  margin: 0 0 0.5rem;
+}
+.ficha-idiomas {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+.ficha-idiomas button {
+  min-height: 2.2rem;
+  padding: 0 0.8rem;
+  flex: 0 0 auto;
+}
+.ficha-descripcion {
+  font-style: italic;
+  margin: 0 0 0.4rem;
+}
+.ficha-texto {
+  line-height: 1.5;
+  hyphens: auto;
+}

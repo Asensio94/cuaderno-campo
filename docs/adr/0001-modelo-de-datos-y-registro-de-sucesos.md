@@ -512,7 +512,9 @@ legales de ruido.
 `pruebas/test_lexico_prohibido.py`, que recorre el paquete del cliente compilado, el esquema
 OpenAPI y las cadenas de interfaz buscando un léxico prohibido (comestible, edible, tóxico,
 toxic, venenoso, poisonous, mortal, deadly, alucinógeno...) y falla el CI si aparece. Una
-restricción sin prueba es una intención.
+restricción sin prueba es una intención. El único sitio del repositorio donde ese léxico está
+escrito es el filtro que lo quita de las fichas de especie antes de que entren en el teléfono
+(`datos/fichas/saneado.py`, §15.22), fuera de lo que recorre la prueba y con su prueba propia.
 
 ---
 
@@ -1525,6 +1527,59 @@ coincide en 164 especies y difiere en una, *Emberiza schoeniclus*, que en el TFL
 ordenador puntúa 0,0297 y en la exportación a TensorFlow.js pasa de 0,03: dos exportaciones de
 los mismos pesos no son iguales bit a bit y en el borde del umbral se nota. Se acepta y queda
 anotado; cada hipótesis lleva escrito qué filtro se le aplicó.
+
+### 15.22 Fichas de especie: lo que el aparato cuenta de un taxón, saneado en casa
+
+El encargo pide que la aplicación dé información de la especie —planta, ave u hongo— y el Pas
+no tiene red. La respuesta es la misma que para el mapa y para BirdNET: un fichero de terceros
+que se genera en el ordenador y se mete una vez. `datos/fichas/generar.py`, solo biblioteca
+estándar, junta para cada clave de GBIF la clasificación y los vernáculos de GBIF (CC BY 4.0), el
+QID y los nombres por idioma de Wikidata (CC0, por `P846` = clave de GBIF) y el resumen del
+artículo de Wikipedia en castellano, francés e inglés (CC BY-SA 4.0), con título, dirección y
+fecha de revisión, y lo escribe en un `.fichas`: JSON con cabecera —formato, nombre, fecha,
+fuentes con licencia, cuántas frases quitó el saneado— y una ficha por clave. Los taxones salen de
+una copia del cuaderno (todo `cdc:gbifTaxonKey` que aparezca en los sucesos), de las aves que el
+filtro de BirdNET espera en unas coordenadas en todo el año, o de una lista a mano. Unos KB por
+especie. Entra en OPFS, en `fichas/`, con `cliente/src/ficheros.ts`; puede haber varios paquetes y
+con la misma clave gana el más reciente.
+
+*El saneado, y por qué vive donde vive.* Los resúmenes de Wikipedia están llenos de lo que la
+restricción 4 prohíbe decir sobre hongos y plantas. El filtro (`datos/fichas/saneado.py`) quita la
+**frase entera**, no la palabra —una frase mutilada engaña más que una frase menos—, sobre el
+texto sin acentos y en minúsculas, con dos léxicos: el núcleo (comestibilidad, toxicidad,
+letalidad, peligro) para todos los reinos, porque un paquete sin esas palabras en ningún sitio es
+más fácil de comprobar y a un ave no le quita nada que importe; y el ampliado (uso alimentario,
+culinario, medicinal, psicoactivo, sabor) solo para hongos, plantas y reino desconocido, porque
+para un ave «se alimenta de lombrices» es ecología. El mismo filtro cae sobre los vernáculos
+(«Amanita mortal», «death cap» son nombres corrientes que la aplicación no puede decir) y sobre
+los títulos de artículo. Se equivoca del lado de quitar de más y ese es el lado correcto. Cada
+ficha lleva escrito cuántas frases y nombres perdió, y la pantalla lo dice con el número: una
+ficha corta que no avisa de que está cortada engaña.
+
+El filtro no puede vivir en el cliente: `pruebas/test_lexico_prohibido.py` recorre `cliente/src`,
+`nucleo` y `pruebas` buscando exactamente ese léxico, y es lo que garantiza que ningún juicio se
+cuele por ninguna otra vía. Por eso el saneado corre una sola vez, al generar, en `datos/`, y el
+generador se niega a escribir un paquete en el que quede algo (`textos_de` recorre todo lo que
+llega a pantalla). `pruebas/test_fichas.py` prueba el filtro con las palabras montadas en tiempo
+de ejecución y, si hay paquetes generados en `datos/fichas/`, los recorre enteros. El cliente,
+en cambio, enseña lo que le llega sin mirar: la garantía está en el paquete, no en la pantalla,
+y así la prueba del léxico sigue valiendo para el cliente tal cual.
+
+*La pantalla.* Desde el detalle de una observación, un botón por cada taxón con clave de GBIF que
+la observación nombre —la determinación y las hipótesis, sin repetir— abre la ficha, y al cerrar
+se vuelve al mismo detalle (`volverA` guarda la pantalla entera). Tres capas, de la más propia a
+la más ajena: lo del cuaderno (cuántas determinaciones aceptadas tuyas a menos de 50 km, con
+salto a la serie del §15.20), lo del árbol de aves que va con la aplicación (nombre, rango,
+vernáculos), y lo del paquete si está. Sin paquete la pantalla no está vacía: enseña las dos
+primeras y dice cómo se mete la tercera. Las fichas se meten y se borran desde la hoja de modelos,
+que pasa a llamarse «Modelos y fichas»: son de terceros, se vuelven a generar, y con los mapas y
+los modelos son lo único que la aplicación borra.
+
+*Lo que no hace.* No hay ficha «en línea»: si la clave no está en ningún paquete, no se pregunta a
+nadie. Con red, el enlace al artículo entero está en la ficha; sin red, lo que hay es lo que se
+trajo. Y no hay fotos: el resumen de Wikipedia trae una miniatura con su propia licencia, distinta
+en cada artículo, y comprobarlas una a una no compensa lo que aportan a alguien que tiene el
+ejemplar delante.
 
 ## 17. La interfaz de campo
 
