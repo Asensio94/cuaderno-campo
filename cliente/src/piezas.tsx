@@ -315,3 +315,38 @@ export function Hoja({
   );
 }
 
+
+// Shared footer of the nine sibling projects (estilo-comun GUIA §3), verbatim; this one is marked
+// as the current page. External links: they only load with coverage, like any link.
+const SIBLINGS: readonly (readonly [href: string, name: string])[] = [
+  ['https://asensio94.github.io/observatorio-alegaciones/', 'Observatorio de alegaciones'],
+  ['https://asensio94.github.io/vigia-incendios/', 'Vigía de incendios'],
+  ['https://asensio94.github.io/centinela-natura/', 'Centinela Natura'],
+  ['https://asensio94.github.io/vigilancia-humedales/', 'Vigilancia de humedales'],
+  ['https://asensio94.github.io/sub-nocte/', 'Sub Nocte'],
+  ['https://asensio94.github.io/riesgo-tendidos-aves/', 'Riesgo de tendidos para aves'],
+  ['https://asensio94.github.io/grafo-promotores/', 'Grafo de promotores'],
+  ['https://asensio94.github.io/cartera-cotizadas/', 'Cartera de las cotizadas'],
+  ['https://asensio94.github.io/cuaderno-campo/', 'Cuaderno de campo'],
+];
+const CURRENT = 'https://asensio94.github.io/cuaderno-campo/';
+
+export function SiteFooter() {
+  return (
+    <footer className="site-footer">
+      <p className="principle">
+        Datos públicos, reglas a la vista y cada cifra enlazada a su fuente. Indicios, no
+        veredictos.
+      </p>
+      <nav aria-label="Proyectos hermanos">
+        <ul className="siblings">
+          {SIBLINGS.map(([href, name]) => (
+            <li key={href} aria-current={href === CURRENT ? 'page' : undefined}>
+              <a href={href}>{name}</a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </footer>
+  );
+}

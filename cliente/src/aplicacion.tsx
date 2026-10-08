@@ -55,6 +55,7 @@ import {
   Gps,
   Hoja,
   Icono,
+  SiteFooter,
   dia,
   hora,
   inicioDe,
@@ -775,6 +776,8 @@ function Inicio({
         <a href="#/conformidad">Diagnóstico del almacén</a>
         {instalacion.instalada && <span className="tenue"> · instalada</span>}
       </p>
+
+      <SiteFooter />
     </>
   );
 }
