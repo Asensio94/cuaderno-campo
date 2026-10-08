@@ -350,3 +350,19 @@ export function SiteFooter() {
     </footer>
   );
 }
+
+/** The robin, shared logo of the sibling projects (estilo-comun/logo.py): breast in the accent. */
+export function Petirrojo() {
+  return (
+    <svg className="logo" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+      <g fill="currentColor">
+        <circle cx="34" cy="31" r="19" />
+        <path d="M19 40 7 50.5l3.5 4L25 46z" />
+        <path d="M52 22l8 2.5-8 2.5z" />
+      </g>
+      <path className="logo-breast" d="M34 12a19 19 0 0 1 15 30.8C42 41 37 34 37 26c0-6 1.5-10.5 4-12.6A19 19 0 0 0 34 12z" />
+      <circle cx="45" cy="21.5" r="2.1" fill="#221d1a" />
+      <path d="M31 49.5V60m7-11v11m-10.5.2h6m1.5 0h6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+    </svg>
+  );
+}

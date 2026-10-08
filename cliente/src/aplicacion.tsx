@@ -55,6 +55,7 @@ import {
   Gps,
   Hoja,
   Icono,
+  Petirrojo,
   SiteFooter,
   dia,
   hora,
@@ -578,7 +579,10 @@ function Alta({ hecho }: { hecho: () => void }) {
       }}
     >
       <Curvas />
-      <h1>Cuaderno de campo</h1>
+      <h1>
+        <Petirrojo />
+        Cuaderno de campo
+      </h1>
       <p className="lema">Observaciones con posición, foto y hora. Sin cobertura.</p>
 
       <p className="restaurar">
@@ -664,7 +668,10 @@ function Inicio({
     <>
       <header className="cabecera">
         <div>
-          <h1>{cuaderno.nombre}</h1>
+          <h1>
+            <Petirrojo />
+            {cuaderno.nombre}
+          </h1>
           <p className="lema">
             {cuaderno.observador} · <code>{dispositivoId()}</code>
           </p>

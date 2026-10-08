@@ -82,6 +82,18 @@ h1 {
   margin: 0;
   letter-spacing: -0.01em;
 }
+/* The robin of the sibling projects (estilo-comun v1.1): body in ink, breast in the accent. */
+.logo {
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  margin-right: 0.3em;
+  vertical-align: -0.22em;
+  color: var(--tinta);
+}
+.logo .logo-breast {
+  fill: var(--verde);
+}
 h2 {
   font-size: 1rem;
   margin: 0;
