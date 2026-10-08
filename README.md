@@ -8,7 +8,10 @@ formalidad: parte de lo que usa el proyecto prohíbe el uso comercial.
 Zona de trabajo: Valle del Pas (Cantabria) e Île-de-France. En buena parte de la primera no hay
 red móvil, y eso es la restricción que manda sobre el diseño entero.
 
-## Cómo está pensado
+Se usa en **https://asensio94.github.io/cuaderno-campo/**, instalada en el teléfono (ver
+[Dónde vive](#dónde-vive)).
+
+## Cómo funciona
 
 1. **Local primero.** Funciona completo sin red. La sincronización es un lujo opcional, nunca
    una condición para apuntar.
@@ -26,107 +29,9 @@ red móvil, y eso es la restricción que manda sobre el diseño entero.
 Los detalles del modelo de datos, el registro y sus invariantes están en
 [ADR-0001](docs/adr/0001-modelo-de-datos-y-registro-de-sucesos.md).
 
-### Lo que este programa no hace
+Cada pieza, de la copia de seguridad a los modelos, se cuenta a continuación con sus comandos.
 
-**No emite juicios de comestibilidad ni de toxicidad** sobre hongos, plantas ni nada más, en
-ninguna parte de la interfaz ni de la salida de la API, ni aunque un modelo devuelva una especie
-con confianza altísima. Sin excepciones y sin opción de configuración. Una identificación
-fotográfica es una hipótesis; una intoxicación por amanita es irreversible.
-
-## Dónde vive
-
-**https://asensio94.github.io/cuaderno-campo/** — abrir en el teléfono e instalar en la pantalla
-de inicio. Se publica desde `principal` con el workflow de `.github/workflows/pages.yml`, y el
-despliegue va detrás de los tipos y las pruebas.
-
-Ese origen es **el** origen: OPFS se indexa por su cadena, así que el cuaderno de
-`asensio94.github.io` no es el de ningún otro sitio. Mudarlo a un dominio propio más adelante
-obliga a exportar el registro e importarlo en el origen nuevo — posible, porque el registro es de
-solo añadir y se exporta entero, pero es trabajo. Y cuidado con publicar otras PWA en
-`asensio94.github.io`: todas comparten origen, y por tanto almacén.
-
-## Puesta en marcha
-
-```bash
-npm install
-npm run generar      # nucleo/generado/ desde terminos.toml y sucesos.toml
-npm run construir
-npm run servir       # sirve dist/ en la red local, en /cuaderno-campo/
-```
-
-Para trabajar:
-
-```bash
-npm run desarrollo       # solo localhost
-npm run desarrollo:red   # también en la red local, para probar en el teléfono
-```
-
-Y la batería completa:
-
-```bash
-npm run tipos && npm run prueba && npm run prueba:python && npm run verificar
-```
-
-### Contexto seguro: no es opcional
-
-El almacén vive en **OPFS** con manejadores de acceso síncronos, y eso —igual que el trabajador
-de servicio y la geolocalización— exige contexto seguro: `https://` o `localhost`. Por HTTP sobre
-la red local el navegador no los da y la aplicación no arranca.
-
-Por eso el uso real va por GitHub Pages, que es HTTPS. Para probar un cambio en el teléfono antes
-de publicarlo, `npm run servir` y `chrome://flags` → *Insecure origins treated as secure* con el
-origen exacto; pero eso es para probar, no para el cuaderno de verdad: los datos que apuntes ahí
-se quedan en ese origen.
-
-Un aviso que cuesta tiempo si no se sabe:
-
-- **Una pestaña, no dos.** `AccessHandlePoolVFS` toma sus ficheros en exclusiva; con el mismo
-  cuaderno abierto en dos sitios, el segundo no abre. La aplicación lo dice y ofrece reintentar.
-
-Instalada en la pantalla de inicio, Chrome concede la persistencia del almacén sin preguntar.
-Como pestaña suelta la deniega, y entonces el navegador puede tirar el cuaderno si al teléfono le
-falta espacio. Instálala.
-
-## Licencias y restricciones heredadas
-
-El proyecto es de uso **personal y no comercial**. No es una preferencia, es lo que permiten sus
-piezas:
-
-- **BirdNET-Analyzer** (identificación de aves por audio, ejecutado en local) es código abierto,
-  pero **sus pesos están bajo CC BY-NC-SA 4.0: uso no comercial, atribución y misma licencia para
-  las obras derivadas.** Esa restricción se hereda: cualquier cosa que este cuaderno haga con los
-  pesos de BirdNET queda igual de limitada, y basta ella sola para que el conjunto no pueda
-  explotarse comercialmente. Documentado aquí como exige el encargo. Por eso los pesos no van
-  con la aplicación ni en el repositorio: para el teléfono se empaquetan en casa (`.modelo`) y se
-  meten como un mapa, y la licencia viaja escrita en la cabecera del paquete.
-- **Pl@ntNet** requiere clave de API con cuota, y su nivel gratuito es **no comercial**. La clave
-  va en variables de entorno, **nunca en el repositorio**.
-- **PlantCLEF 2024** (identificación de plantas por la foto, dentro del teléfono): los pesos que
-  publicó el equipo organizador en Zenodo (registro 10848263) van bajo **CC BY 4.0**, que solo
-  pide atribución; la cita viaja en la cabecera del paquete `.modelo`. No van en el repositorio
-  porque pesan 370 MB en coma flotante (97 MB cuantizados), no por licencia.
-- **FungiTastic / Danish Fungi** (identificación de hongos por la foto): los pesos publicados por
-  el grupo BVRA en Hugging Face y los metadatos del conjunto de datos van bajo **CC BY-NC 4.0:
-  uso no comercial**, la misma restricción heredada que BirdNET y documentada aquí por la misma
-  razón. El paquete se genera en casa y la licencia va escrita en su cabecera.
-- **OpenStreetMap y Protomaps**: los mosaicos del mapa salen del basemap de Protomaps, construido
-  desde datos de OSM bajo **ODbL**. La atribución no es decoración: va pintada en el mapa y viaja
-  dentro del propio fichero `.pmtiles`. No se descargan mosaicos en bloque de
-  `tile.openstreetmap.org`, que su política de uso prohíbe expresamente.
-- **Noto Sans** (los glifos de los rótulos del mapa) está bajo la **SIL Open Font License 1.1**,
-  que permite el uso, la modificación y la redistribución con la condición de que la licencia
-  acompañe a la fuente: va en `cliente/public/glifos/OFL.txt`. No impone restricción comercial.
-- **GBIF**: la resolución de nombres usa su API pública. Conviene citar los conjuntos de datos y
-  respetar sus condiciones al publicar.
-- **Wikipedia y Wikidata**: los resúmenes de las fichas de especie son texto de Wikipedia bajo
-  **CC BY-SA 4.0**, con título, dirección y fecha de revisión escritos en cada ficha; los nombres
-  por idioma vienen de Wikidata (CC0). Van en un paquete que se genera en casa y no en el
-  repositorio, y salen del ordenador ya saneados según la restricción 4 (abajo).
-
-Las observaciones son datos propios y se exportan como **Darwin Core Archive**, que es lo que
-entienden GBIF y iNaturalist.
-
-## Copia de seguridad y exportación
+### Copia de seguridad y exportación
 
 Con un solo teléfono, los datos están en un solo sitio. La pantalla de inicio tiene **Guardar
 copia**: un ZIP con el registro completo (`sucesos.jsonl`) y los medios por su SHA-256, que sale
@@ -156,7 +61,7 @@ que sale va sin EXIF, XMP ni IPTC. El EXIF local queda intacto.
 así que las pruebas comprueban la estructura (columnas contra `meta.xml`, enlaces al núcleo) y el
 archivo se sube a mano a <https://www.gbif.org/tools/data-validator> antes de publicarlo.
 
-## El mapa, dentro del teléfono
+### El mapa, dentro del teléfono
 
 En el valle del Pas no hay cobertura, así que el mapa no se pide por la red: es un fichero que se
 mete una vez, en casa. El formato es **PMTiles** —un solo fichero leído por rangos de bytes, sin
@@ -201,7 +106,7 @@ o en griego pediría un rango que no está y saldría sin pintar.
 
 Los ficheros `.pmtiles` no se versionan: se generan con el comando de arriba.
 
-## Aves por el canto: BirdNET en el ordenador y en el teléfono
+### Aves por el canto: BirdNET en el ordenador y en el teléfono
 
 BirdNET corre en dos sitios con los mismos pesos. En el ordenador, sobre una copia, como **otro
 dispositivo del mismo cuaderno**: escribe sucesos con su propio identificador y los devuelve en
@@ -210,7 +115,7 @@ modelo, con un botón en el detalle de cada observación que tenga audio. Los do
 —hasta cinco hipótesis sin aceptar, su taxón resuelto y las señales que no son aves— y firman
 distinto (`birdnet-analyzer` y `birdnet-tfjs`); lo que uno ha oído, el otro no lo repite.
 
-### En el ordenador
+#### En el ordenador
 
 ```bash
 python -m venv trabajadores/birdnet/.venv
@@ -232,7 +137,7 @@ que genera `datos/birdnet/emparejar.py` contra el subárbol local de Aves y la A
 filas están curadas a mano, las que no son un nombre científico. Si al subir de versión de pesos
 aparece una etiqueta nueva sin clase, el generador falla.
 
-### En el teléfono
+#### En el teléfono
 
 El modelo es un fichero, como el mapa: 82 MB que no van con la aplicación (los pesos son
 CC BY-NC-SA, ver [licencias](#licencias-y-restricciones-heredadas)) y que se preparan una vez en
@@ -255,7 +160,7 @@ Comprobado con el `sample.wav` que trae BirdNET: el ordenador y el teléfono dan
 etiquetas con las mismas confianzas a cuatro decimales. Los detalles, y la única discrepancia
 encontrada en el filtro, en el ADR §15.21.
 
-## Plantas y hongos por la foto, dentro del teléfono
+### Plantas y hongos por la foto, dentro del teléfono
 
 Dos modelos publicados, sin red, con el mismo trato que BirdNET: un fichero que se prepara una
 vez en el ordenador y se mete desde **Modelos y fichas**. No se entrena nada propio.
@@ -326,7 +231,7 @@ llevan nombres científicos y claves, nada más, y la
 518 px, por qué dos variantes, qué hubo que aprender de ONNX Runtime en el navegador— están en el
 ADR §15.23.
 
-## Plantas por la foto: el conector de Pl@ntNet
+### Plantas por la foto: el conector de Pl@ntNet
 
 Es la segunda opinión, con red: la primera es el
 [modelo dentro del teléfono](#plantas-y-hongos-por-la-foto-dentro-del-teléfono). Igual que
@@ -379,7 +284,7 @@ Límite conocido: Pl@ntNet no publica una versión de pesos citable, así que `c
 guarda la cadena de versión que devuelve la respuesta. Es menos reproducible que BirdNET, y queda
 dicho en vez de disimulado.
 
-## La ficha de la especie, dentro del teléfono
+### La ficha de la especie, dentro del teléfono
 
 Una observación con determinación o con hipótesis tiene un botón **Ficha de …** por cada taxón
 que nombra. La ficha cuenta lo que el aparato sabe sin cobertura: cuántas veces lo has determinado
@@ -408,7 +313,7 @@ lado de quitar de más. El artículo entero sigue a un enlace, con red; la aplic
 reproduce. Los detalles del filtro y de por qué vive en `datos/` y no en el cliente, en el ADR
 §15.22.
 
-## Hongos: los caracteres que la foto no trae
+### Hongos: los caracteres que la foto no trae
 
 Con un hongo, la foto es la mitad. La otra mitad se apunta delante del ejemplar: **cómo vira al
 corte y cuánto** (azul, rojo, negro…), el **himenóforo** (láminas, poros, pliegues, aguijones), la
@@ -426,9 +331,57 @@ grupo para plantas es añadir un bloque ahí ([ADR §15.20](docs/adr/0001-modelo
 Son descriptores. Ni aquí ni en ningún otro sitio de la aplicación hay nada que diga qué hacer con
 el ejemplar: ver [lo que este programa no hace](#lo-que-este-programa-no-hace).
 
-## Estado
+## Contraste / validación
+
+- **El registro, entre lenguajes.** El almacén en Python y su gemelo en TypeScript pliegan el
+  mismo corpus comprometido (`pruebas/conformidad/`) y tienen que dar la misma proyección; la
+  esperada no se da por buena porque la genere Python, sino que se recalcula con un intérprete
+  escrito aparte. La pantalla **Diagnóstico del almacén** repite el corpus sobre OPFS de verdad.
+- **BirdNET, ordenador contra teléfono.** Con el `sample.wav` que trae BirdNET, los dos dan las
+  mismas etiquetas con las mismas confianzas a cuatro decimales (ADR §15.21).
+- **Modelos de imagen, ONNX contra torch.** Cada exportación comprueba que ONNX dice lo mismo
+  que torch sobre una foto de prueba. Para FungiTastic esa foto fue ruido: la paridad sobre una
+  foto de hongo con etiqueta conocida está **pendiente**.
+- **Darwin Core Archive.** Las pruebas comprueban la estructura (columnas contra `meta.xml`,
+  enlaces al núcleo); la validación en gbif.org es un paso manual y está **pendiente** con un
+  archivo real.
+- **Pl@ntNet.** Una prueba fuerza un fallo y comprueba que la clave no aparece en ningún
+  mensaje. La primera pasada con clave de verdad está **pendiente**.
+- **Tintas de la interfaz.** `pruebas/test_contraste_css.py` impide usar la tinta del verde
+  macizo fuera de él y que una variable exista en un tema y no en el otro.
+
+## Límites
+
+### Lo que este programa no hace
+
+**No emite juicios de comestibilidad ni de toxicidad** sobre hongos, plantas ni nada más, en
+ninguna parte de la interfaz ni de la salida de la API, ni aunque un modelo devuelva una especie
+con confianza altísima. Sin excepciones y sin opción de configuración. Una identificación
+fotográfica es una hipótesis; una intoxicación por amanita es irreversible.
+
+### Lo que hace mal o no hace todavía
+
+- Sin contexto seguro (`https://` o `localhost`) no arranca, y con el cuaderno abierto en dos
+  pestañas la segunda no abre: ver [Contexto seguro](#contexto-seguro-no-es-opcional).
+- Como pestaña suelta, el navegador puede tirar el cuaderno si al teléfono le falta espacio;
+  instalada, no.
+- Los rótulos del mapa cubren el rango latino 0-255: un topónimo en cirílico o en griego sale sin
+  pintar.
+- Los modelos de imagen no tienen clase «otra cosa», no están medidos en un teléfono de verdad y,
+  sin WebGPU, una foto de planta puede tardar del orden de un minuto.
+- Pl@ntNet no publica una versión de pesos citable, no tiene botón en el teléfono y no sube fotos
+  HEIC, que hoy no se saben sanear.
+
+## Pendiente
+
+Validar un archivo real en gbif.org; una primera pasada de Pl@ntNet con clave de
+verdad; medir los modelos de imagen en el teléfono de verdad, no solo en el ordenador; comprobar
+la paridad de FungiTastic sobre una foto de hongo con etiqueta conocida (la de la exportación se
+hizo sobre ruido); una salida de verdad al Pas con audio y su análisis.
 
 Fase 0, en curso.
+
+### Hecho hasta ahora
 
 Hecho: modelo de datos y registro de sucesos con sus invariantes; almacén en Python y su gemelo en
 TypeScript sobre wa-sqlite/OPFS; captura de nota, foto, audio (WAV) con su cola, GPS y hora con
@@ -460,7 +413,131 @@ con PlantCLEF 2024 y FungiTastic exportados a ONNX, cuantizados y empaquetados c
 corriendo en WebGPU o en WASM dentro de un trabajador, y comprobados de punta a punta en el
 navegador: paquete metido por dirección, foto, botón, hipótesis sin aceptar en el registro.
 
-Pendiente: validar un archivo real en gbif.org; una primera pasada de Pl@ntNet con clave de
-verdad; medir los modelos de imagen en el teléfono de verdad, no solo en el ordenador; comprobar
-la paridad de FungiTastic sobre una foto de hongo con etiqueta conocida (la de la exportación se
-hizo sobre ruido); una salida de verdad al Pas con audio y su análisis.
+## Uso
+
+### Dónde vive
+
+**https://asensio94.github.io/cuaderno-campo/** — abrir en el teléfono e instalar en la pantalla
+de inicio. Se publica desde `principal` con el workflow de `.github/workflows/pages.yml`, y el
+despliegue va detrás de los tipos y las pruebas.
+
+Ese origen es **el** origen: OPFS se indexa por su cadena, así que el cuaderno de
+`asensio94.github.io` no es el de ningún otro sitio. Mudarlo a un dominio propio más adelante
+obliga a exportar el registro e importarlo en el origen nuevo — posible, porque el registro es de
+solo añadir y se exporta entero, pero es trabajo. Y cuidado con publicar otras PWA en
+`asensio94.github.io`: todas comparten origen, y por tanto almacén.
+
+### Puesta en marcha
+
+```bash
+npm install
+npm run generar      # nucleo/generado/ desde terminos.toml y sucesos.toml
+npm run construir
+npm run servir       # sirve dist/ en la red local, en /cuaderno-campo/
+```
+
+Para trabajar:
+
+```bash
+npm run desarrollo       # solo localhost
+npm run desarrollo:red   # también en la red local, para probar en el teléfono
+```
+
+Y la batería completa:
+
+```bash
+npm run tipos && npm run prueba && npm run prueba:python && npm run verificar
+```
+
+#### Contexto seguro: no es opcional
+
+El almacén vive en **OPFS** con manejadores de acceso síncronos, y eso —igual que el trabajador
+de servicio y la geolocalización— exige contexto seguro: `https://` o `localhost`. Por HTTP sobre
+la red local el navegador no los da y la aplicación no arranca.
+
+Por eso el uso real va por GitHub Pages, que es HTTPS. Para probar un cambio en el teléfono antes
+de publicarlo, `npm run servir` y `chrome://flags` → *Insecure origins treated as secure* con el
+origen exacto; pero eso es para probar, no para el cuaderno de verdad: los datos que apuntes ahí
+se quedan en ese origen.
+
+Un aviso que cuesta tiempo si no se sabe:
+
+- **Una pestaña, no dos.** `AccessHandlePoolVFS` toma sus ficheros en exclusiva; con el mismo
+  cuaderno abierto en dos sitios, el segundo no abre. La aplicación lo dice y ofrece reintentar.
+
+Instalada en la pantalla de inicio, Chrome concede la persistencia del almacén sin preguntar.
+Como pestaña suelta la deniega, y entonces el navegador puede tirar el cuaderno si al teléfono le
+falta espacio. Instálala.
+
+Los comandos de cada pieza (mosaicos, modelos, fichas, trabajadores, exportación) están en su
+apartado de [Cómo funciona](#cómo-funciona).
+
+## Datos que se guardan
+
+| fichero | contenido |
+|---|---|
+| almacén en OPFS (SQLite sobre wa-sqlite, en el teléfono) | el registro de sucesos, de solo añadir, y los medios: fotos, audios WAV y notas |
+| copia `.zip` (**Guardar copia**) | `sucesos.jsonl` con el registro completo y los medios por su SHA-256 |
+| `.jsonl` de los trabajadores | los sucesos de BirdNET o Pl@ntNet escritos en el ordenador, que el teléfono restaura como una copia |
+| `archivo-dwca.zip` | Darwin Core Archive: ocurrencias con determinación aceptada, su historial de identificaciones y sus medios sin EXIF |
+| `*.pmtiles` (`datos/mosaicos/`, y en OPFS) | los mosaicos del mapa de una zona; no se versionan |
+| `*.modelo` (`datos/birdnet/V2.4/`, `datos/imagen/`) | pesos, etiquetas y una cabecera con la licencia; no van en el repositorio |
+| `*.fichas` (`datos/fichas/`) | las fichas de especie, ya saneadas; no van en el repositorio |
+| `datos/birdnet/V2.4/etiquetas.tsv` | las 6.522 etiquetas de BirdNET V2.4 clasificadas contra GBIF |
+| `datos/imagen/cache/`, `datos/fichas/cache/` | respuestas de GBIF, Wikipedia y Wikidata, para repetir sin volver a preguntar |
+| `cliente/public/glifos/` | los glifos SDF de Noto Sans para los rótulos del mapa, con su `OFL.txt` |
+
+## Fuentes y licencias
+
+### Licencias y restricciones heredadas
+
+El proyecto es de uso **personal y no comercial**. No es una preferencia, es lo que permiten sus
+piezas:
+
+- **BirdNET-Analyzer** (identificación de aves por audio, ejecutado en local) es código abierto,
+  pero **sus pesos están bajo CC BY-NC-SA 4.0: uso no comercial, atribución y misma licencia para
+  las obras derivadas.** Esa restricción se hereda: cualquier cosa que este cuaderno haga con los
+  pesos de BirdNET queda igual de limitada, y basta ella sola para que el conjunto no pueda
+  explotarse comercialmente. Documentado aquí como exige el encargo. Por eso los pesos no van
+  con la aplicación ni en el repositorio: para el teléfono se empaquetan en casa (`.modelo`) y se
+  meten como un mapa, y la licencia viaja escrita en la cabecera del paquete.
+- **Pl@ntNet** requiere clave de API con cuota, y su nivel gratuito es **no comercial**. La clave
+  va en variables de entorno, **nunca en el repositorio**.
+- **PlantCLEF 2024** (identificación de plantas por la foto, dentro del teléfono): los pesos que
+  publicó el equipo organizador en Zenodo (registro 10848263) van bajo **CC BY 4.0**, que solo
+  pide atribución; la cita viaja en la cabecera del paquete `.modelo`. No van en el repositorio
+  porque pesan 370 MB en coma flotante (97 MB cuantizados), no por licencia.
+- **FungiTastic / Danish Fungi** (identificación de hongos por la foto): los pesos publicados por
+  el grupo BVRA en Hugging Face y los metadatos del conjunto de datos van bajo **CC BY-NC 4.0:
+  uso no comercial**, la misma restricción heredada que BirdNET y documentada aquí por la misma
+  razón. El paquete se genera en casa y la licencia va escrita en su cabecera.
+- **OpenStreetMap y Protomaps**: los mosaicos del mapa salen del basemap de Protomaps, construido
+  desde datos de OSM bajo **ODbL**. La atribución no es decoración: va pintada en el mapa y viaja
+  dentro del propio fichero `.pmtiles`. No se descargan mosaicos en bloque de
+  `tile.openstreetmap.org`, que su política de uso prohíbe expresamente.
+- **Noto Sans** (los glifos de los rótulos del mapa) está bajo la **SIL Open Font License 1.1**,
+  que permite el uso, la modificación y la redistribución con la condición de que la licencia
+  acompañe a la fuente: va en `cliente/public/glifos/OFL.txt`. No impone restricción comercial.
+- **GBIF**: la resolución de nombres usa su API pública. Conviene citar los conjuntos de datos y
+  respetar sus condiciones al publicar.
+- **Wikipedia y Wikidata**: los resúmenes de las fichas de especie son texto de Wikipedia bajo
+  **CC BY-SA 4.0**, con título, dirección y fecha de revisión escritos en cada ficha; los nombres
+  por idioma vienen de Wikidata (CC0). Van en un paquete que se genera en casa y no en el
+  repositorio, y salen del ordenador ya saneados según la
+  [restricción 4](#lo-que-este-programa-no-hace).
+
+Las observaciones son datos propios y se exportan como **Darwin Core Archive**, que es lo que
+entienden GBIF y iNaturalist.
+
+La licencia del código está **sin decidir**: el repositorio no lleva fichero `LICENSE`
+todavía, y la que se elija tiene que convivir con las restricciones de arriba.
+
+Forma parte de un conjunto de proyectos hermanos:
+[Observatorio de alegaciones](https://asensio94.github.io/observatorio-alegaciones/),
+[Vigía de incendios](https://asensio94.github.io/vigia-incendios/),
+[Centinela Natura](https://asensio94.github.io/centinela-natura/),
+[Vigilancia de humedales](https://asensio94.github.io/vigilancia-humedales/),
+[Sub Nocte](https://asensio94.github.io/sub-nocte/),
+[Riesgo de tendidos para aves](https://asensio94.github.io/riesgo-tendidos-aves/),
+[Grafo de promotores](https://asensio94.github.io/grafo-promotores/) y
+[Cartera de las cotizadas](https://asensio94.github.io/cartera-cotizadas/).
