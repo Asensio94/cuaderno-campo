@@ -330,6 +330,7 @@ const SIBLINGS: readonly (readonly [href: string, name: string])[] = [
   ['https://asensio94.github.io/cuaderno-campo/', 'Cuaderno de campo'],
   ['https://asensio94.github.io/caudal-ecologico/', 'Caudal ecológico'],
   ['https://asensio94.github.io/estado-iba/', 'Estado de las IBA'],
+  ['https://asensio94.github.io/acuiferos-francia/', 'Acuíferos de Francia'],
 ];
 const CURRENT = 'https://asensio94.github.io/cuaderno-campo/';
 
