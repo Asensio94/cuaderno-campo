@@ -11,6 +11,8 @@ red móvil, y eso es la restricción que manda sobre el diseño entero.
 Se usa en **https://asensio94.github.io/cuaderno-campo/**, instalada en el teléfono (ver
 [Dónde vive](#dónde-vive)).
 
+> **Estado: mantenimiento.** Sigue funcionando y se corrigen sus fallos, pero por ahora no se le añaden funciones.
+
 ## Cómo funciona
 
 1. **Local primero.** Funciona completo sin red. La sincronización es un lujo opcional, nunca
