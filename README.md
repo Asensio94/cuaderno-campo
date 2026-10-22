@@ -534,15 +534,16 @@ entienden GBIF y iNaturalist.
 La licencia del código está **sin decidir**: el repositorio no lleva fichero `LICENSE`
 todavía, y la que se elija tiene que convivir con las restricciones de arriba.
 
-Forma parte de un conjunto de proyectos hermanos:
-[Observatorio de alegaciones](https://asensio94.github.io/observatorio-alegaciones/),
-[Vigía de incendios](https://asensio94.github.io/vigia-incendios/),
-[Centinela Natura](https://asensio94.github.io/centinela-natura/),
-[Vigilancia de humedales](https://asensio94.github.io/vigilancia-humedales/),
-[Sub Nocte](https://asensio94.github.io/sub-nocte/),
-[Riesgo de tendidos para aves](https://asensio94.github.io/riesgo-tendidos-aves/),
-[Grafo de promotores](https://asensio94.github.io/grafo-promotores/),
-[Cartera de las cotizadas](https://asensio94.github.io/cartera-cotizadas/),
-[Caudal ecológico](https://asensio94.github.io/caudal-ecologico/),
-[Estado de las IBA](https://asensio94.github.io/estado-iba/) y
-[Acuíferos de Francia](https://asensio94.github.io/acuiferos-francia/).
+Forma parte de [Terra Aperta](https://asensio94.github.io/terra-aperta/), un conjunto de proyectos hermanos de datos abiertos sobre naturaleza:
+[Sub Nocte](https://github.com/Asensio94/sub-nocte),
+[Vigía de incendios](https://github.com/Asensio94/vigia-incendios),
+[Centinela Natura](https://github.com/Asensio94/centinela-natura),
+[Estado de las IBA](https://github.com/Asensio94/estado-iba),
+[Riesgo de tendidos para aves](https://github.com/Asensio94/riesgo-tendidos-aves),
+[Observatorio de alegaciones](https://github.com/Asensio94/observatorio-alegaciones),
+[Grafo de promotores](https://github.com/Asensio94/grafo-promotores),
+[Vigilancia de humedales](https://github.com/Asensio94/vigilancia-humedales),
+[Caudal ecológico](https://github.com/Asensio94/caudal-ecologico),
+[Acuíferos de Francia](https://github.com/Asensio94/acuiferos-francia),
+[Depuración y baño](https://github.com/Asensio94/depuracion-y-bano) y
+[Construir en zona inundable](https://github.com/Asensio94/zona-inundable).

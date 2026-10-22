@@ -616,6 +616,10 @@ fieldset:disabled {
   padding: 0;
   list-style: none;
 }
+.site-footer .hub {
+  margin: 0;
+}
+.site-footer .hub a,
 .siblings a {
   display: inline-flex;
   align-items: center;

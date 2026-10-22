@@ -316,23 +316,24 @@ export function Hoja({
 }
 
 
-// Shared footer of the nine sibling projects (estilo-comun GUIA §3), verbatim; this one is marked
-// as the current page. External links: they only load with coverage, like any link.
+// Common footer of the Terra Aperta projects: a link back to the hub, then its twelve projects in the
+// hub's menu order. This notebook is not one of them, so none is marked as the current page.
+// External links: they only load with coverage, like any link.
+const HUB = 'https://asensio94.github.io/terra-aperta/';
 const SIBLINGS: readonly (readonly [href: string, name: string])[] = [
-  ['https://asensio94.github.io/observatorio-alegaciones/', 'Observatorio de alegaciones'],
+  ['https://asensio94.github.io/sub-nocte/', 'Sub Nocte'],
   ['https://asensio94.github.io/vigia-incendios/', 'Vigía de incendios'],
   ['https://asensio94.github.io/centinela-natura/', 'Centinela Natura'],
-  ['https://asensio94.github.io/vigilancia-humedales/', 'Vigilancia de humedales'],
-  ['https://asensio94.github.io/sub-nocte/', 'Sub Nocte'],
-  ['https://asensio94.github.io/riesgo-tendidos-aves/', 'Riesgo de tendidos para aves'],
-  ['https://asensio94.github.io/grafo-promotores/', 'Grafo de promotores'],
-  ['https://asensio94.github.io/cartera-cotizadas/', 'Cartera de las cotizadas'],
-  ['https://asensio94.github.io/cuaderno-campo/', 'Cuaderno de campo'],
-  ['https://asensio94.github.io/caudal-ecologico/', 'Caudal ecológico'],
   ['https://asensio94.github.io/estado-iba/', 'Estado de las IBA'],
+  ['https://asensio94.github.io/riesgo-tendidos-aves/', 'Riesgo de tendidos para aves'],
+  ['https://asensio94.github.io/observatorio-alegaciones/', 'Observatorio de alegaciones'],
+  ['https://asensio94.github.io/grafo-promotores/', 'Grafo de promotores'],
+  ['https://asensio94.github.io/vigilancia-humedales/', 'Vigilancia de humedales'],
+  ['https://asensio94.github.io/caudal-ecologico/', 'Caudal ecológico'],
   ['https://asensio94.github.io/acuiferos-francia/', 'Acuíferos de Francia'],
+  ['https://asensio94.github.io/depuracion-y-bano/', 'Depuración y baño'],
+  ['https://asensio94.github.io/zona-inundable/', 'Construir en zona inundable'],
 ];
-const CURRENT = 'https://asensio94.github.io/cuaderno-campo/';
 
 export function SiteFooter() {
   return (
@@ -341,10 +342,13 @@ export function SiteFooter() {
         Datos públicos, reglas a la vista y cada cifra enlazada a su fuente. Indicios, no
         veredictos.
       </p>
+      <p className="hub">
+        <a href={HUB}>← Terra Aperta: todos los proyectos</a>
+      </p>
       <nav aria-label="Proyectos hermanos">
         <ul className="siblings">
           {SIBLINGS.map(([href, name]) => (
-            <li key={href} aria-current={href === CURRENT ? 'page' : undefined}>
+            <li key={href}>
               <a href={href}>{name}</a>
             </li>
           ))}
